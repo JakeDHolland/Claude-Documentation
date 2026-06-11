@@ -1,8 +1,29 @@
-// Original author - Jake Holland
-// Contributing developers:
-//
-// @input.record_id - yoda id in yoda format
-//
+// /**
+//  * FUNCTION: yoda_extract_id
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Extracts the numeric ID from a Yoda IRI-format
+//  *          identifier string. Yoda returns IDs as full resource
+//  *          paths e.g. "/api/v1/companies/396" — this function
+//  *          returns just the trailing numeric segment "396".
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   yoda_id_string {String} — Yoda ID in IRI format
+//  *                                    e.g. "/api/v1/companies/396"
+//  *
+//  * @returns {String} — Numeric ID segment e.g. "396"
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Split the IRI string on "/"
+//  *   2. Return the last segment
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 yoda_id_list = yoda_id_string.toList("/");
 yoda_id_list_size = yoda_id_list.size();
 yoda_id_list_location = yoda_id_list_size - 1;

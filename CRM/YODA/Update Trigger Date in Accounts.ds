@@ -1,11 +1,31 @@
-// Original author - Prince Rajput
-// Contributing developers:
-//
-// @input.record_id - The account record ID to fetch the account record response.
-//
-// get the account record
+// /**
+//  * FUNCTION: Update Trigger Date in Accounts
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Sets the Task_Trigger_Date on an Account to three
+//  *          months from today. Used to schedule the next
+//  *          follow-up task cycle for the Account.
+//  *
+//  * @trigger Workflow: Accounts — On Edit (specific field change)
+//  *
+//  * @param   id {String} — The CRM Account record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Fetch Account record
+//  *   2. Calculate today + 3 months
+//  *   3. Update Task_Trigger_Date on the Account
+//  *
+//  * @authors  Prince Rajput (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 record_info = zoho.crm.getRecordById("Accounts",id);
 mp = Map();
 mp.put("Task_Trigger_Date",zoho.currentdate.addMonth(3));
-//updating the trigger date in Accounts module
+//
+// Use workflow trigger so downstream workflows can fire on this update
 info zoho.crm.updateRecord("Accounts",id,mp,{"trigger":{"workflow"}});

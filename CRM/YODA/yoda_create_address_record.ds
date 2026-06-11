@@ -1,12 +1,38 @@
-// Original author - Jake Holland
-// Contributing developers:
-// - Sam Prabhu
-//
-// @input.map of the address
+// /**
+//  * FUNCTION: yoda_create_address_record
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Creates a new Address record in the CRM Addresses
+//  *          module. Used by Create_Address_from_Account to
+//  *          persist address data from Account fields into
+//  *          individual Address records.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   address {Map} — Address data map with keys:
+//  *                          street, street2, city, province,
+//  *                          postal_code, country, type,
+//  *                          account_id, Name, Primary,
+//  *                          Do_Not_Allow_Record_to_Sync
+//  *
+//  * @returns {String} — New Address record ID, or
+//  *                     "Unable to create Address" on failure
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Extract fields from input map
+//  *   2. Build CRM Address record map
+//  *   3. Create Address record in CRM (with workflow trigger)
+//  *   4. Return new record ID or error string
+//  *
+//  * @authors  Jake Holland (original)
+//  *           Sam Prabhu (contributor)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 address = address.toMap();
 //
-// get the record details
-// pull details from the account to map to address
 street = address.get("street");
 street_2 = address.get("street2");
 city = address.get("city");
@@ -19,23 +45,21 @@ address_name = address.get("Name");
 primary = IFNULL(address.get("Primary"),FALSE);
 do_not_sync = address.get("Do_Not_Allow_Record_to_Sync");
 //
-// prepare new address
+// Build the CRM Address record map
 Address = Map();
 Address.put("Type","Billing");
 Address.put("Street_1",street);
 Address.put("Account_Name",account_id);
 Address.put("Address_Line_Two",street_2);
 Address.put("Town_City",city);
-//Address.put("Province",province);
 Address.put("Postcode",postal_code);
 Address.put("Country",country);
 Address.put("Type",type);
 Address.put("Name",address_name);
 Address.put("Primary",primary);
-Address.put("Do_Not_Allow_Record_to_Sync", do_not_sync)
+Address.put("Do_Not_Allow_Record_to_Sync", do_not_sync);
 //
 info Address;
-// attempt to add a new address
 response = zoho.crm.createRecord("Addresses",Address,{"trigger":{"workflow"}});
 info response;
 if(response.containsKey("id"))
@@ -43,10 +67,8 @@ if(response.containsKey("id"))
 	address_id = response.get("id");
 }
 //
-// check if address was added
 if(address_id == null)
 {
-	// cant add occupancy without address
 	return "Unable to create Address";
 }
 else

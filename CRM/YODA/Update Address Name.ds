@@ -1,9 +1,31 @@
-// Original author - Prince Rajput
-// Contributing developers:
-//
-// @input.record_id - The account record ID to fetch the account record response.
-//
-// get the account record
+// /**
+//  * FUNCTION: Update Address Name
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Auto-generates a human-readable Name for an Address
+//  *          record by combining the auto-number, street, and
+//  *          postcode. Keeps Address names consistent and
+//  *          searchable without manual input.
+//  *
+//  *          Format: "{Auto_Number} - {Street_1} - {Postcode}"
+//  *
+//  * @trigger Workflow: Addresses — On Create or Edit
+//  *
+//  * @param   record_id {String} — The CRM Address record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Fetch Address record
+//  *   2. Read Street_1, Auto_Number, and Postcode fields
+//  *   3. Concatenate into name format and update the record
+//  *
+//  * @authors  Prince Rajput (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 module = "Addresses";
 record_info = zoho.crm.getRecordById(module,record_id);
 info record_info;
@@ -11,7 +33,6 @@ address_name = ifnull(record_info.get("Street_1"),"");
 auto_number = ifNull(record_info.get("Auto_Number"),"");
 post_code = ifNull(record_info.get("Postcode"),"");
 mp = Map();
-//Updataing the Address with auto_number + address_name + post_code
 mp.put("Name",auto_number + " - " + address_name + " - " + post_code);
 updt_address = zoho.crm.updateRecord("Addresses",record_id,mp);
 info updt_address;

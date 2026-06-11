@@ -1,7 +1,34 @@
+// /**
+//  * FUNCTION: update_account_in_yoda
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Updates an existing Yoda company record from CRM
+//  *          Account data. Only runs if the Account already has
+//  *          a Yoda_Id — will not create new records in Yoda.
+//  *
+//  * @trigger Workflow: Accounts — On Edit (key fields updated)
+//  *
+//  * @param   account_id {String} — The CRM Account record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends process_account_before_conversion
+//  *          yoda_get_intergration_settings
+//  *          yoda_sync_record
+//  *
+//  * @flow
+//  *   1. Fetch Account record
+//  *   2. Normalise fields for Yoda format
+//  *   3. Check Yoda_Id is set — exit silently if not
+//  *   4. Sync Account → Yoda company (PUT)
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 account_info = zoho.crm.getRecordById("Accounts",account_id);
 //
 account_info = standalone.process_account_before_conversion(account_info);
-//
 //
 settings = standalone.yoda_get_intergration_settings();
 yoda_path = settings.get("credentials").get("root");

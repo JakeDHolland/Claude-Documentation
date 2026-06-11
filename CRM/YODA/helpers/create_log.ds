@@ -1,31 +1,59 @@
-// Original author - Jake Holland
-// Contributing developers:
-// - Dash Bunyan
-//
-// NOTE: Used to create a standard log message for audit and bug fixing purposes.
-//
-// @name - create_log
-// @input.type - Either error, warning or info.
-// @input.title - Summary of the log information.
-// @input.message - Data content of the log.
-// @return - String - A JSON encoded object of the log creating result.
-//
+// /**
+//  * FUNCTION: create_log
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Creates a standardised audit log record in the CRM
+//  *          Audit_Logs module. If the message exceeds the field
+//  *          character limit (32,000) it is truncated and the full
+//  *          content is stored in a linked Note record instead.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   status  {String} — Log level: "INFO", "ERROR", or "WARNING"
+//  * @param   title   {String} — Short description. The last word is
+//  *                             parsed as the record ID and used to
+//  *                             link the log to the correct CRM record.
+//  * @param   message {Map|String} — Full payload or error detail
+//  * @param   module  {String} — CRM module name: "Accounts",
+//  *                             "Contacts", or "Addresses"
+//  *
+//  * @returns {Map} — The createRecord API response
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Parse record ID from last word of title
+//  *   2. Build log payload with Status, Title, Message, and module link
+//  *   3. Truncate message to 32,000 chars if needed
+//  *   4. Create Audit_Logs record in CRM
+//  *   5. If truncated, create a linked Note with the full content
+//  *      (up to the 65,535 char Note limit)
+//  *
+//  * @authors  Jake Holland (original)
+//  *           Dash Bunyan (contributor)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
+
+// Character limits
+MESSAGE_LIMIT = 32000;
+NOTE_LIMIT = 65535;
+
+// Extract the record ID from the last word of the title
 title_list = title.toList(" ");
 for each x in title_list
 {
 	record_id = x;
 }
 info record_id;
-// set contants
-MESSAGE_LIMIT = 32000;
-NOTE_LIMIT = 65535;
 //
-// prepare a payload
+// Build the log payload
 payload = Map();
 payload.put("Status",status);
 payload.put("Title",title);
 payload.put("Message",message);
 //
+// Link the log to the correct CRM module record
 if(module = "Accounts")
 {
 	payload.put("Account", record_id);
@@ -39,7 +67,7 @@ else if (module = "Addresses")
 	payload.put("Address", record_id);
 }
 //
-// truncated message
+// Truncate the message if it exceeds the field limit
 truncated = false;
 if(message != null && message.length() > MESSAGE_LIMIT)
 {
@@ -47,38 +75,31 @@ if(message != null && message.length() > MESSAGE_LIMIT)
 	truncated = true;
 }
 //
-// add the log record
+// Create the log record
 response = zoho.crm.createRecord("Audit_Logs",payload,{"trigger":{"workflow"}});
 info response;
 //
-// check if truncated
-// NOTE: The note on a record has a higher character limit so we can use it as well
-// when the message field has to be truncated.
+// If truncated, store the full content in a linked Note (higher character limit)
 if(truncated == true)
 {
-	// get the id of the new log record
 	log_id = response.get("id");
 	//
-	// prepare the note title
 	note_title = "Content over Multiline limit of " + MESSAGE_LIMIT + " characters.";
 	//
-	// prepare a note
 	note_payload = Map();
 	note_payload.put("Parent_Id",log_id);
 	note_payload.put("Note_Title",note_title);
 	note_payload.put("Note_Content",message);
 	note_payload.put("$se_module","Audit_Logs");
 	//
-	// may still need to truncate this one too
+	// Truncate the note too if it still exceeds the Note limit
 	if(message.length() > NOTE_LIMIT)
 	{
 		note_title = note_title + " Also over note limit of " + NOTE_LIMIT + " characters.";
 		note_payload.put("Note_Content",message.left(NOTE_LIMIT));
 	}
 	//
-	// create the note
 	note_response = zoho.crm.createRecord("Notes",note_payload);
 }
 //
-// return result of the record creation
 return response;

@@ -1,39 +1,71 @@
-// Original author - Jake Holland
-// Contributing developers:
-//
-// @input.module - the crm module name the record belongs to e.g. Accounts
-// @input.record_info - the CRM record info to be processed. Any modifications to the map should be done before it reaches this point.
-//
-//
+// /**
+//  * FUNCTION: yoda_sync_record
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Core sync engine. Translates a CRM record map into
+//  *          a Yoda-compatible payload using the field mapping
+//  *          defined in yoda_get_intergration_settings, then
+//  *          calls the Yoda API to create or update the record.
+//  *          Writes the returned Yoda_Id back to the CRM record
+//  *          on first sync.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   module      {String} — CRM module name
+//  *                                 e.g. "Accounts", "Contacts", "Addresses"
+//  * @param   record_info {Map}    — Pre-processed CRM record map.
+//  *                                 Any field normalisations must be applied
+//  *                                 before calling this function.
+//  *
+//  * @returns {String} — "Successfull" on success, "ERROR" on failure
+//  *
+//  * @depends yoda_get_intergration_settings
+//  *          translate
+//  *          yoda_call_api
+//  *          yoda_extract_id
+//  *          create_log
+//  *
+//  * @flow
+//  *   1. Load field mapping for the module from settings
+//  *   2. Log the sync attempt to Audit_Logs
+//  *   3. Translate CRM map → Yoda payload via translate helper
+//  *   4. Remove empty company lookup values (Yoda rejects empty strings)
+//  *   5. Determine POST (create) or PUT (update) based on Yoda_Id
+//  *   6. Call Yoda API
+//  *   7. On success, extract Yoda_Id from response and write to CRM record
+//  *   8. Log outcome (success or error)
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 record_info = record_info.toMap();
 record_id = record_info.get("id");
-// fetch the yoda mapping for Accounts
+//
+// Fetch the field mapping for this module
 settings = standalone.yoda_get_intergration_settings();
 mapping = settings.get("mapping").get(module);
-//info "mapping: " +mapping;
 //
-//
-// create log of sync attempt
+// Log the sync attempt before making the API call
 create_log = standalone.create_log("INFO","Syncing " + module + " - " + record_id,record_info,module);
 //
-//
 output_data = Map();
-// translate to yoda format
+//
+// Translate CRM field names and values into Yoda API format
 translation_result = standalone.translate(record_info,mapping,"crm","yoda",output_data,true);
 output_data = translation_result.get("result");
 errors = translation_result.get("errors");
 warnings = translation_result.get("warnings");
 //
-//remove empty lookup fields since they cannot be ""
+// Remove empty company lookup — Yoda rejects an empty string on a lookup field
 company = output_data.get("company");
 if(company == "")
 {
 	output_data.remove("company");
 }
 info "output_data: " + output_data;
-// info "output_data empty: " + output_data.isEmpty();
-// info "errors empty: " + errors.isEmpty();
-// info "warnings empty:" + warnings.isEmpty();
+//
+// Abort if translation produced errors or warnings
 if(output_data.isEmpty() == true || errors.isEmpty() != true || warnings.isEmpty() != true)
 {
 	info "ERROR: Unable to Translate - " + module + " - " + record_id;
@@ -41,13 +73,13 @@ if(output_data.isEmpty() == true || errors.isEmpty() != true || warnings.isEmpty
 	return "ERROR";
 }
 //
-//build path
+// Determine the API path and method
+// If Yoda_Id is set the record already exists in Yoda — use PUT to update
+// If Yoda_Id is null the record is new — use POST to create
 path = settings.get("path").get(module);
 yoda_id = record_info.get("Yoda_Id");
 yoda_api_call = "POST";
 sync_type = "Create";
-// if yoda_id is not empty the record has been synced to Yoda already so we want to update and not create. This needs a slightly different path
-// we also need to use a PUT api call and not POST
 if(yoda_id != null)
 {
 	path = path + "/" + yoda_id;
@@ -58,15 +90,14 @@ if(yoda_id != null)
 //
 headers = Map();
 //
-// Sync to Yoda
+// Call the Yoda API
 info yoda_id;
 response = standalone.yoda_call_api(path,yoda_api_call,output_data,headers);
 info response;
 //
-//create log of sync attempt
 response_message = response.get("data");
 //
-//from testing so far only success is stored in the data mapping
+// A null data key in the response indicates an API error
 if(response_message == null)
 {
 	info "ERROR: Unable to " + sync_type + " " + module;
@@ -74,20 +105,18 @@ if(response_message == null)
 	return "ERROR";
 }
 //
-// log sucessess
+// Log success
 info "Info: Yoda Record " + sync_type + " for " + module + " - " + record_id;
 create_log = standalone.create_log("INFO","Successfully " + sync_type + " " + module + " - " + record_id,response,module);
 //
-// only extract id out if the field is empty. If the field is not it has already been extracted.
+// On first sync, extract the new Yoda_Id from the response and write it back to CRM.
+// The response id looks like "/api/v1/companies/396" so we extract the numeric part.
 if(yoda_id == null)
 {
-	//add yoda_id to account
-	//yoda_id = response.get("data").get("id");
-	//yoda id return looks like this "/api/v1/companies/396" so we need to extract the real id out
 	yoda_id_string = response.get("data").get("id");
 	yoda_id = standalone.yoda_extract_id(yoda_id_string);
 	//
-	// update account with yoda id
+	// Write the Yoda_Id back to the CRM record
 	update = zoho.crm.updateRecord(module,record_id,{"Yoda_Id":yoda_id},{"trigger":{"workflow"}});
 	update_id = update.get("id");
 	if(update_id == null)
@@ -96,6 +125,5 @@ if(yoda_id == null)
 		return "ERROR";
 	}
 }
-//
 //
 return "Successfull";

@@ -1,15 +1,41 @@
-// Original author - Jake Holland
-// Contributing developers:
-// -
-//
-//
-// details for generating a token or logging in to Yoda
-//
-//this field affects where the system will make its api calls
-// to change what enviroment we use update the "sync_version" to point to the version we want
+// /**
+//  * FUNCTION: yoda_get_intergration_settings
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Returns the central settings map used by all Yoda
+//  *          integration functions. Contains environment URLs,
+//  *          the active environment selector, field mappings for
+//  *          each CRM module, and API path aliases.
+//  *
+//  *          To switch environments, change sync_version to point
+//  *          to the desired environment key:
+//  *            "live_enviroment" → api.beautynet.co  (production)
+//  *            "uat_enviroment"  → apiuat.beautynet.co
+//  *            "test_enviroment" → apitest.beautynet.co
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   none
+//  *
+//  * @returns {Map} — Settings map with keys:
+//  *                  credentials, mapping, path
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Define credentials (environment URLs and active selector)
+//  *   2. Define field mappings for Accounts, Contacts, Addresses
+//  *   3. Define module path aliases (CRM name ↔ Yoda endpoint)
+//  *   4. Return settings map
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 settings = {
 	"credentials":
 	{
+			// Change sync_version to switch the active environment
 			"sync_version":"live_enviroment",
 			"test_enviroment":"apitest",
 			"uat_enviroment":"apiuat",

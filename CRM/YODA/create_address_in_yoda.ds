@@ -1,21 +1,48 @@
-// Original author - Jake Holland
-// Contributing developers:
-// - Prince Rajput
-//
-// @input.account_id - The account record ID to generate and address for.
-//
-// get the account record
+// /**
+//  * FUNCTION: create_address_in_yoda
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Syncs a single CRM Address record to Yoda. Looks up
+//  *          the parent Account's Yoda_Id to build the company
+//  *          link. Exits silently if the parent Account has not
+//  *          yet been synced to Yoda — yoda_trigger_sync handles
+//  *          that ordering when run on the Account.
+//  *
+//  * @trigger Workflow: Addresses — On Create or Edit
+//  *
+//  * @param   record_id {String} — The CRM Address record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends yoda_get_intergration_settings
+//  *          process_address_before_conversion
+//  *          yoda_sync_record
+//  *
+//  * @flow
+//  *   1. Fetch Address record
+//  *   2. Load integration settings
+//  *   3. Normalise address type for Yoda format
+//  *   4. Read parent Account and check its Yoda_Id
+//  *   5. Exit silently if parent Account not yet in Yoda
+//  *   6. Build company_yoda_id link from Account Yoda_Id
+//  *   7. Inject company link and sync Address → Yoda (POST or PUT)
+//  *
+//  * @authors  Jake Holland (original)
+//  *           Prince Rajput (contributor)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 module = "Addresses";
 record_info = zoho.crm.getRecordById(module,record_id);
 //
 settings = standalone.yoda_get_intergration_settings();
 yoda_path = settings.get("credentials").get("root");
-// =========Create/Update Address ===========Working==========
-// Address create/update logic
+//
+// Normalise the address type integer before translation
 record_info = standalone.process_address_before_conversion(record_info);
 record_info = record_info.toMap();
 //
-// get the related account yoda id so we can link it
+// Look up the parent Account's Yoda_Id so we can link the Address to the company in Yoda
 account = record_info.get("Account_Name");
 if(account != null)
 {
@@ -24,7 +51,8 @@ if(account != null)
 	yoda_id = account_info.get("Yoda_Id");
 	info "yoda_id: " + yoda_id;
 	//
-	// if null then we cant sync this record so dont try
+	// If the parent Account has no Yoda_Id it hasn't been synced yet — skip.
+	// yoda_trigger_sync will handle this Address when it runs on the Account.
 	if(yoda_id != null)
 	{
 		info "hit";

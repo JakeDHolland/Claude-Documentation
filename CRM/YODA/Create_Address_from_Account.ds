@@ -1,6 +1,44 @@
+// /**
+//  * FUNCTION: Create_Address_from_Account
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Creates CRM Address records from address fields stored
+//  *          directly on an Account record. This is a CRM-to-CRM
+//  *          operation — it does not call Yoda directly. The created
+//  *          Address records are then picked up by the
+//  *          create_address_in_yoda workflow function.
+//  *
+//  *          Up to three addresses are created per Account:
+//  *            - Company/Mailing  → Delivery type, not synced to Yoda
+//  *            - Warehouse        → Delivery type, marked as Primary
+//  *            - Invoice/Billing  → Billing type, marked as Primary
+//  *
+//  * @trigger Workflow: Accounts — On Create
+//  *          Button: "Create Addresses" on Account detail view
+//  *
+//  * @param   account_id {String} — The CRM Account record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends yoda_create_address_record
+//  *
+//  * @flow
+//  *   1. Fetch Account record
+//  *   2. If Billing address fields are present, create Delivery
+//  *      Address (Do_Not_Allow_Record_to_Sync = "Yes")
+//  *   3. If Warehouse address fields are present, create primary
+//  *      Delivery Address
+//  *   4. If Invoice address fields are present, create primary
+//  *      Billing Address
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 account_info = zoho.crm.getRecordById("Accounts",account_id);
-// Company Information == Mailing Information
-// The Company Information / Mailing Address should captured in CRM but not pushed to Yoda.
+//
+// Company Information == Mailing Address
+// Captured in CRM but not pushed to Yoda — set Do_Not_Allow_Record_to_Sync
 if(account_info.get("Billing_Street") != null || account_info.get("Billing_Street_2") != null || account_info.get("Billing_City") != null || account_info.get("Billing_State") != null || account_info.get("Billing_Code") != null || account_info.get("Billing_Country") != null)
 {
 	company_address_map = Map();
@@ -14,11 +52,10 @@ if(account_info.get("Billing_Street") != null || account_info.get("Billing_Stree
 	company_address_map.put("account_id",account_id);
 	company_address_map.put("Name",account_info.get("Account_Name"));
 	company_address_map.put("Do_Not_Allow_Record_to_Sync","Yes");
-	// create address
 	address_id = standalone.yoda_create_address_record(company_address_map);
-	//
 }
-//Warehouse Address == Delivery Address
+//
+// Warehouse Address == Delivery Address (Primary)
 if(account_info.get("Warehouse_Street_Address") != null || account_info.get("Warehouse_Address_line_2") != null || account_info.get("Warehouse_City") != null || account_info.get("Warehouse_State") != null || account_info.get("Warehouse_Postal_Zip_Code") != null || account_info.get("Warehouse_Country") != null)
 {
 	warehouse_address_map = Map();
@@ -32,11 +69,11 @@ if(account_info.get("Warehouse_Street_Address") != null || account_info.get("War
 	warehouse_address_map.put("account_id",account_id);
 	warehouse_address_map.put("Primary",true);
 	warehouse_address_map.put("Name",account_info.get("Account_Name"));
-	// create address
 	info warehouse_address_map;
 	warehouse_address_id = standalone.yoda_create_address_record(warehouse_address_map);
 }
-//Invoice Address == Billing Address
+//
+// Invoice Address == Billing Address (Primary)
 if(account_info.get("Street_Address") != null || account_info.get("Address_Line_2") != null || account_info.get("Invoice_City") != null || account_info.get("Invoice_State") != null || account_info.get("Postal_Zip_Code") != null || account_info.get("Invoice_Country") != null)
 {
 	invoice_address_map = Map();
@@ -50,6 +87,5 @@ if(account_info.get("Street_Address") != null || account_info.get("Address_Line_
 	invoice_address_map.put("Primary",true);
 	invoice_address_map.put("account_id",account_id);
 	invoice_address_map.put("Name",account_info.get("Account_Name"));
-	// create address
 	invoice_address_map = standalone.yoda_create_address_record(invoice_address_map);
 }

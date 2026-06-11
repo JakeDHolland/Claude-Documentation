@@ -1,31 +1,55 @@
-// Original author - Dash Bunyan
-//
-// @input.data - The source object in the source format.
-// @input.mapping - An array of defined mappings in a fixed structure, see examples in client projects.
-// @input.source - Used to determine the input format of the object.
-// @input.destination - Used to determine the output format of the object.
-// @input.object - An optional existing object to inject results into.
-// @input.write - An optional parameter that determines if the output should include non-writable fields.
-//
-// @desc Takes the input data and transforms it via a mapping settings
-// object into a compatible format as an output. This function can and
-// should be extended to accomodate more type translations and validation.
-//
-// @depends extract, inject, is_array, index_in_map_list
-// @returns string - Transaltion result object containing:
-// data - The modified or built output formatted data).
-// errors - Any issues with the transaltion that could prevent appropriate use of the output.
-// warnings - Any issues that are of note but wont impact use of the output.
-//
-// prepare a result
-// NOTE: passing an existing object is optional.
-// If null, a new object will be created.
+// /**
+//  * FUNCTION: translate
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Core field-mapping engine. Takes a source data map
+//  *          and a mapping configuration array, and produces an
+//  *          output map in the destination format. Handles type
+//  *          conversion, validation, truncation, value substitution,
+//  *          and nullable checks for each field.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   data        {Map}     — Source record data
+//  * @param   mapping     {List}    — Array of field mapping definitions
+//  *                                  from yoda_get_intergration_settings
+//  * @param   source      {String}  — Key for source format e.g. "crm"
+//  * @param   destination {String}  — Key for destination format e.g. "yoda"
+//  * @param   object      {Map}     — Optional existing map to inject into
+//  * @param   write       {Boolean} — If true, skips non-writable fields
+//  *
+//  * @returns {Map} — Result map with three keys:
+//  *                  result   — The translated output map
+//  *                  errors   — List of blocking translation errors
+//  *                  warnings — List of non-blocking issues
+//  *
+//  * @depends extract
+//  *          inject
+//  *          is_array
+//  *
+//  * @flow
+//  *   1. Parse and validate input parameters
+//  *   2. For each field in the mapping:
+//  *      a. Extract value from source data (or use static value)
+//  *      b. Convert to destination type (string, integer, decimal,
+//  *         date, datetime, boolean, array)
+//  *      c. Apply string transformations (truncate, case, index, prefix, suffix)
+//  *      d. Apply numeric validation (min, max, round)
+//  *      e. Apply default value if result is null
+//  *      f. Check nullable constraint — add error if violated
+//  *      g. Inject value into output map via inject helper
+//  *   3. Return result, errors, and warnings
+//  *
+//  * @authors  Dash Bunyan (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 result = Map();
 errors = {};
 warnings = {};
 //
-// convert input parameters
-try 
+// Parse and validate inputs
+try
 {
 	data = data.toMap();
 	mapping = mapping.toJSONList();
@@ -34,28 +58,22 @@ try
 }
 catch (error)
 {
-	// error and return as inputs cant be used
 	message = "The input parameters cannot be parsed. - " + error;
 	errors.add(message);
 	return {"result":result.toMap(),"errors":errors.toList(),"warnings":warnings.toList()};
 }
 //
-// iterate the mapping to pull values and translate data types and re-label
+// Iterate the mapping and translate each field
 for each  field_mapping in mapping
 {
-	//info "===Tranalsating====";
-	// extract the data
-	//info field_mapping;
 	source_mapping = field_mapping.get(source);
 	static_value = source_mapping.get("static");
-	//info "source:" + source_mapping;
+	//
 	if(static_value.isNull())
 	{
-		// pull value from source data
-		// NOTE: Values that are strings of null will be treated as null.
+		// Pull value from source data — treat string "null" as actual null
 		source_path = source_mapping.get("path");
 		source_type = source_mapping.get("type");
-		//info "source_path: " + source_path;
 		value = standalone.extract(source_path,data);
 		if(value == "null")
 		{
@@ -64,66 +82,55 @@ for each  field_mapping in mapping
 	}
 	else
 	{
-		// pull value from static value in mapping
+		// Use the static value defined in the mapping
 		value = static_value;
 	}
-	//info "source Value: " + value;
 	//
-	// translate the data type
+	// Convert to destination type
 	destination_mapping = field_mapping.get(destination);
 	type = destination_mapping.get("type");
-	//info "type: " + type;
+	//
 	if(type == "string" && value != null)
 	{
-		// convert to string
 		value = value.toString();
 		//
-		// check if value should be truncated
+		// Truncate if value exceeds max length
 		max_length = IFNULL(destination_mapping.get("max"),0).toLong();
 		if(max_length > 0 && value.length() > max_length)
 		{
-			// check if the value can be truncated
 			allow_truncation = IFNULL(destination_mapping.get("trunc"),"true") == "true";
 			if(allow_truncation)
 			{
-				// truncate
 				value = value.subString(0,max_length);
 			}
 			else
 			{
-				// error
 				message = "The value for " + source_path + " has more than the allowed characters of " + max_length + " and cannot be truncated.";
 				errors.add(message);
 			}
 		}
 		//
-		// apply case transformation
+		// Apply case transformation
 		case = destination_mapping.get("case");
 		if(case != null)
 		{
-			// convert to upper or lowercase
 			value = IF(case == "upper",value.toUpperCase(),value.toLowerCase());
 		}
 		//
-		// check for index mapping
-		// NOTE: This is used to translate fixed values for cases
-		// such as drop downs or picklists.
+		// Apply index mapping for picklist/dropdown value substitution
 		indexes = destination_mapping.get("index");
 		if(indexes != null)
 		{
-			// if the index is not found, just use the regular value
 			indexes = indexes.toMap();
 			value = IFNULL(indexes.get(value),value);
 		}
 		//
-		// check for a prefix
+		// Apply prefix and suffix
 		prefix = destination_mapping.get("prefix");
 		if(prefix != null)
 		{
 			value = prefix + value;
 		}
-		//
-		// check for a suffix
 		suffix = destination_mapping.get("suffix");
 		if(suffix != null)
 		{
@@ -132,13 +139,11 @@ for each  field_mapping in mapping
 	}
 	else if(type == "integer" || type == "decimal")
 	{
-		// split on decimal point
+		// Strip non-numeric characters and convert
 		parts = IF(value == null || value == "","0",value).toList(".");
 		validated_parts = List();
 		for each index i in parts
 		{
-			// validate parts
-			// NOTE: Only parse the first two split parts as the whole and fractional
 			if(i <= 1)
 			{
 				part = parts.get(i);
@@ -147,24 +152,21 @@ for each  field_mapping in mapping
 				validated_parts.add(validated_part);
 			}
 		}
-		//
-		// convert to a number
 		value = validated_parts.toString(".");
 		value = IF(type == "integer",value.toLong(),value.toDecimal());
 		//
-		// apply rounding
+		// Apply rounding for decimals
 		rounding = destination_mapping.get("round");
 		if(type == "decimal" && rounding != null && rounding != "")
 		{
 			value = value.round(rounding.toLong());
 		}
 		//
-		// apply limits
+		// Validate min/max bounds
 		min = destination_mapping.get("min");
 		max = destination_mapping.get("max");
 		if(min != null)
 		{
-			// NOTE: check must be done this way as compiler flags error in type otherwise
 			int_check = type == "integer" && value.toLong() < min.toLong();
 			dec_check = type == "decimal" && value.toDecimal() < min.toDecimal();
 			if(int_check || dec_check)
@@ -175,7 +177,6 @@ for each  field_mapping in mapping
 		}
 		if(max != null)
 		{
-			// NOTE: check must be done this way as compiler flags error in type otherwise
 			int_check = type == "integer" && value.toLong() > max.toLong();
 			dec_check = type == "decimal" && value.toDecimal() > max.toDecimal();
 			if(int_check || dec_check)
@@ -187,18 +188,15 @@ for each  field_mapping in mapping
 	}
 	else if(type == "date" && value != null && value != "")
 	{
-		// get the format (or default)
 		source_format = IFNULL(source_mapping.get("format"),"dd/MM/yyyy");
 		destination_format = IFNULL(destination_mapping.get("format"),"dd/MM/yyyy");
-		//
-		// parse the date
-		try 
+		try
 		{
 			value = value.toDate(source_format).toString(destination_format);
 		}
 		catch (error)
 		{
-			try 
+			try
 			{
 				value = value.toDate().toString(destination_format);
 			}
@@ -213,20 +211,16 @@ for each  field_mapping in mapping
 	}
 	else if(type == "datetime" && value != null && value != "")
 	{
-		// get the format (or default)
 		source_format = IFNULL(source_mapping.get("format"),"dd/MM/yyyy hh:mm:ss");
 		destination_format = IFNULL(destination_mapping.get("format"),"dd/MM/yyyy hh:mm:ss");
 		//
-		// check for time delimiter
 		time_delimiter = " ";
 		if(destination_format.contains("T"))
 		{
 			destination_format = destination_format.replaceAll("T",time_delimiter);
 			time_delimiter = "T";
 		}
-		//
-		// parse the date
-		try 
+		try
 		{
 			value = value.toDateTime(source_format).toString(destination_format);
 			if(time_delimiter == "T")
@@ -236,7 +230,7 @@ for each  field_mapping in mapping
 		}
 		catch (error)
 		{
-			try 
+			try
 			{
 				value = value.toDateTime().toString(destination_format);
 				if(time_delimiter == "T")
@@ -266,44 +260,31 @@ for each  field_mapping in mapping
 	}
 	else if(type == "array")
 	{
-		// check if the input can be used as a JSON array
 		valid_array = standalone.is_array(value) == "true";
-		//info "valid_array: " + valid_array;
 		if(!valid_array)
 		{
-			// attempt to convert the value to an array
-			try 
+			try
 			{
 				value = value.toJSONList();
 			}
 			catch (error)
 			{
-				message = "Mapping value for " + source_path + " with value " + value + " and format " + source_format + ".";
-				message = message + " Failed to parse to format " + destination_format + ". " + error + ".";
+				message = "Mapping value for " + source_path + " with value " + value + ".";
+				message = message + " Failed to parse as array. " + error + ".";
 				errors.add(message);
 				value = null;
 			}
 		}
 	}
-	// 	else if(!value.isNull())
-	// 	{
-	// 		// set to null as the type cannot be mapped
-	// 		message = "Mapping value for '" + source_path + "' with value '" + value + "'.";
-	// 		message = message + " Failed to map value '" + value + "' to type '" + type + "'.";
-	// 		warnings.add(message);
-	// 		value = null;
-	// 	}
 	//
-	// Yoda does not allow null values as such
-	// treat null as empty string
-	//value = IF(value == null," ",value);
+	// Normalise empty strings to null
 	value = IF(value == "",Null,value);
 	//
-	// check for a default value
+	// Apply default value if result is null
 	default_value = destination_mapping.get("default");
 	value = IF(default_value != null && value == null,default_value,value);
 	//
-	// check if null is allowed
+	// Enforce nullable constraint
 	destination_path = destination_mapping.get("path");
 	allow_null = IFNULL(destination_mapping.get("nullable"),"true").toString() == "true";
 	if(!allow_null && value == null)
@@ -311,27 +292,21 @@ for each  field_mapping in mapping
 		message = "The value for " + destination_path + " is required but has no value.";
 		errors.add(message);
 	}
-	
+	//
+	// Inject value into output map (skip non-writable fields if write mode is on)
 	if(value != null)
 	{
-		//
-		// add property to result
-		// NOTE: Check if property can be written to destination
 		is_writing = write == true;
 		can_write = destination_mapping.get("write") != "false";
 		if(is_writing && !can_write)
 		{
-			// NOTE: Currently not warning on writable fields to keep logs clean.
-			//message = "The value for " + destination_path + " is not writable so will be skipped.";
-			//warnings.add(message);
+			// Non-writable field — skip silently
 		}
 		else
 		{
 			result = standalone.inject(destination_path,result,value);
 		}
-		//info "Result: " + result;	
 	}
 }
 //
-// return the mapped data
 return {"result":result.toMap(),"errors":errors.toList(),"warnings":warnings.toList()};

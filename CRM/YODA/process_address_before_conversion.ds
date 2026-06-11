@@ -1,7 +1,33 @@
+// /**
+//  * FUNCTION: process_address_before_conversion
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Converts the CRM Address Type string into the integer
+//  *          code Yoda's API requires before the record is synced.
+//  *          Yoda uses integers for address type, not strings.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   address {Map} — Raw CRM Address record map
+//  *
+//  * @returns {Map} — Modified address map with address_type set
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Read Type field from address map
+//  *   2. Map "Billing" → 3, all other values → 2 (Delivery)
+//  *   3. Inject address_type integer into map
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 address = address.toMap();
 //
-// Address create/update logic
-// we inject the address type since it is a 1 or 2 in yoda but in crm its a string. We do the logic here to keep the function generic
+// Yoda uses an integer for address type:
+//   2 = Delivery
+//   3 = Billing
 address_type = address.get("Type");
 if(address_type == "Billing")
 {
@@ -11,7 +37,5 @@ else
 {
 	address.put("address_type",2);
 }
-//
-//
 //
 return address;

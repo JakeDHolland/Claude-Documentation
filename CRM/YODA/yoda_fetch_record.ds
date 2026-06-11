@@ -1,36 +1,50 @@
-// Original author - Jake Holland
-// Contributing developers:
-//
-// @input.module - the yoda api name of the module e.g. contacts
-// @input.criters - the critera to search records e.g. fullName=Jake Holland
-//
-//
-//example will return the first 3 contacts on the first page
-//path = "contacts?itemsPerPage=3";
-//
-//example will return the contact with id of 3
-//critera = "/3";
-//
-// only return partial match for fullName and emailAddress. Will return things that are not even close to the value inputted so you will need to loop though.
-//critera = "fullName=Daniel Romanowski";
-//
+// /**
+//  * FUNCTION: yoda_fetch_record
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Fetches one or more records from a Yoda API module
+//  *          using a criteria query string. Logs every request
+//  *          to Audit_Logs for traceability.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   module  {String} — CRM module name used to look up
+//  *                             the Yoda endpoint e.g. "Accounts"
+//  * @param   critera {String} — Yoda query string e.g.
+//  *                             "surname=Holland"
+//  *                             "label=Net+30"
+//  *
+//  * @returns {Map} — Raw Yoda API response containing a "data" list
+//  *
+//  * @depends yoda_get_intergration_settings
+//  *          yoda_call_api
+//  *          create_log
+//  *
+//  * @flow
+//  *   1. Look up the Yoda endpoint path for the module
+//  *   2. Build query string: endpoint?criteria&order[created]=desc
+//  *   3. Call Yoda API (GET)
+//  *   4. Log the request and response to Audit_Logs
+//  *   5. Return the raw response map
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 settings = standalone.yoda_get_intergration_settings();
 yoda_module = settings.get("path").get(module);
-//build path
+//
+// Build the full fetch path with criteria and default sort order
 fetch_path = yoda_module + "?" + critera + "&order[created]=desc";
 //
 headers = Map();
-//
 body = Map();
-//
 //
 info "Path:" + fetch_path;
 info "headers:" + headers;
 response = standalone.yoda_call_api(fetch_path,"GET",body,headers);
 //
-//create log of response to store
+// Log the request for audit and debugging purposes
 create_log = standalone.create_log("INFO","Fetch Critera: " + fetch_path,response,module);
 //
-contacts = response.get("data");
-//info "Contacts: "+ contacts.size();
 return response;

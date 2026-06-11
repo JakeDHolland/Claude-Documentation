@@ -1,45 +1,54 @@
-// Original author - Dash Bunyan
-// Contributing developers:
-// - Jake Holland
-//
-// @input.path - The location within the data object to add the value.
-// @input.data - The object to add the value to.
-// @input.value - The value to add at the location path.
-//
-// @desc Allows you to add data to the end of a path
-// within a complex object structure.
-//
-// @depends extract
-// @returns string - The modified JSON.
-//
-// make sure the input data is cleanly translated into a map
+// /**
+//  * FUNCTION: inject
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Writes a value into a nested map at a slash-delimited
+//  *          path, creating intermediate maps as needed. Used by
+//  *          the translate helper to build the output payload.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   path  {String} — Slash-delimited destination path
+//  *                           e.g. "attributes/companyName"
+//  * @param   data  {Map}    — The object to inject into
+//  * @param   value {Any}    — The value to write at the path
+//  *
+//  * @returns {Map} — The modified data map
+//  *
+//  * @depends extract
+//  *
+//  * @flow
+//  *   1. Split path into accessors
+//  *   2. Iterate in reverse, wrapping the value in a map at each level
+//  *   3. Use extract to fetch any existing data at each level
+//  *      so existing keys are preserved
+//  *   4. Return the fully reconstructed map
+//  *
+//  * @authors  Dash Bunyan (original)
+//  *           Jake Holland (contributor)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 data = IF(data == "" || data == null,Map(),data).toMap();
 //
-// split the path into accessors
 accessors = path.toList("/");
 //
-// build the result iterating back from the last accessor
 result = value;
 last_index = accessors.size() - 1;
 for each index i in accessors
 {
-	// get the current index and accessor
 	index = last_index - i;
 	head = accessors.get(index);
 	//
-	// build the remaining path
 	tail = accessors.subList(0,index).toString("/");
 	//
-	// extract data at path and build as map
+	// Preserve existing keys at this level before adding the new value
 	extract = standalone.extract(tail,data);
 	container = IF(extract == "" || extract == null,Map(),extract).toMap();
 	//
-	// add the data at this layer
 	container.put(head,result);
 	//
-	// add to overall result
 	result = container;
 }
 //
-// return modified / generated data
 return result;

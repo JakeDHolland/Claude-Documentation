@@ -1,7 +1,31 @@
-// Original author - Jake Holland
-// Contributing developers:
-// -
-//
+// /**
+//  * FUNCTION: fetch_yoda_user_id
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Resolves a CRM user's Yoda user ID by fetching the
+//  *          CRM user record, querying the Yoda users endpoint
+//  *          by surname, then matching on full name to find the
+//  *          correct record.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   user_id {String} — The CRM user record ID
+//  *
+//  * @returns {String} — Yoda user ID, or "MISSING" if not found
+//  *
+//  * @depends yoda_fetch_record
+//  *
+//  * @flow
+//  *   1. Fetch CRM user record and extract full_name and last_name
+//  *   2. URL-encode the last name for safe query string use
+//  *   3. Query Yoda users endpoint with surname filter
+//  *   4. Loop results and match on fullName
+//  *   5. Return Yoda user ID or "MISSING"
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 user_record = zoho.crm.getRecordById("users", user_id);
 user_record = user_record.get("users").get(0);
 info user_record;
@@ -9,10 +33,11 @@ info user_record;
 full_name = user_record.get("full_name");
 last_name = user_record.get("last_name");
 user_id = "MISSING";
-//encode incase it has some space in it
-last_name =  encodeUrl(last_name);
 //
-// Set critera for fetch
+// URL-encode the surname in case it contains spaces or special characters
+last_name = encodeUrl(last_name);
+//
+// Query Yoda by surname — may return partial matches so we loop and match on full name
 critera = "surname="+last_name;
 module = "users";
 //
@@ -20,10 +45,7 @@ response = standalone.yoda_fetch_record(module,critera);
 response = response.get("data");
 for each record in response
 {
-	//info record;
 	yoda_fullName = record.get("attributes").get("fullName");
-// 	info yoda_fullName;
-// 	info full_name;
 	if(yoda_fullName == full_name)
 	{
 		user_id = record.get("id");

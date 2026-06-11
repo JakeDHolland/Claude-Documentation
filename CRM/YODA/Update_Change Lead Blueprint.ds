@@ -1,6 +1,45 @@
+// /**
+//  * FUNCTION: Update_Change Lead Blueprint
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Detects a mismatch between a Lead's Lead_Prospect_Type
+//  *          and the currently active Blueprint, then forces a
+//  *          transition to the correct Blueprint stage.
+//  *
+//  *          Handles two scenarios:
+//  *            Customer (or Customer & Supplier) on Supplier Blueprint
+//  *              → transitions to Customer Blueprint
+//  *            Supplier on Lead Qualification Blueprint
+//  *              → transitions to Supplier Blueprint
+//  *
+//  * @trigger Workflow: Leads — On Edit (Lead_Prospect_Type changes)
+//  *
+//  * @param   id {String} — The CRM Lead record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Fetch Lead and read Lead_Prospect_Type
+//  *   2. Fetch current Blueprint state via CRM API
+//  *   3. Compare prospect type against active Blueprint name
+//  *   4. If mismatch, PUT the correct transition ID to the API
+//  *   5. Clear Lead_Status and update Lead_Prospect_Type
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
+
+// Blueprint transition IDs — update these if blueprints are rebuilt in CRM
+TRANSITION_TO_CUSTOMER = "6102667000001448432";
+TRANSITION_TO_SUPPLIER = "6102667000000583579";
+
 record_info = zoho.crm.getRecordById("Leads",id);
-// info record_info;
 prospect_type = record_info.get("Lead_Prospect_Type");
+//
+// Fetch the currently active Blueprint for this Lead
 response = invokeurl
 [
 url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
@@ -9,76 +48,75 @@ connection:"zcrm"
 ];
 info response;
 transitions = response.get("blueprint").get("transitions");
-// info transitions;
 blueprint = response.get("blueprint").get("process_info").get("name");
-// info blueprint;
-// info prospect_type;
+//
+// Helper to build and execute a blueprint transition
+// Customer or Customer & Supplier on the Supplier Blueprint → move to Customer Blueprint
 if(prospect_type == "Customer" && blueprint == "Supplier Blueprint")
 {
-transtition_id = "6102667000001448432";
-dataMap = Map();
-dataMap.put("Notes","Updated via blueprint");
-blueprint1 = Map();
-blueprint1.put("transition_id",transtition_id);
-blueprint1.put("data",dataMap);
-blueprintList = List();
-blueprintList.add(blueprint1);
-param = Map();
-param.put("blueprint",blueprintList);
-response = invokeurl
-[
-url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
-type :PUT
-parameters:param.toString()
-connection:"zcrm"
-];
-info response;
-updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Customer"});
-info updt;
+	dataMap = Map();
+	dataMap.put("Notes","Updated via blueprint");
+	blueprint1 = Map();
+	blueprint1.put("transition_id",TRANSITION_TO_CUSTOMER);
+	blueprint1.put("data",dataMap);
+	blueprintList = List();
+	blueprintList.add(blueprint1);
+	param = Map();
+	param.put("blueprint",blueprintList);
+	response = invokeurl
+	[
+	url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+	type :PUT
+	parameters:param.toString()
+	connection:"zcrm"
+	];
+	info response;
+	updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Customer"});
+	info updt;
 }
 if(prospect_type == "Customer & Supplier" && blueprint == "Supplier Blueprint")
 {
-transtition_id = "6102667000001448432";
-dataMap = Map();
-dataMap.put("Notes","Updated via blueprint");
-blueprint1 = Map();
-blueprint1.put("transition_id",transtition_id);
-blueprint1.put("data",dataMap);
-blueprintList = List();
-blueprintList.add(blueprint1);
-param = Map();
-param.put("blueprint",blueprintList);
-response = invokeurl
-[
-url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
-type :PUT
-parameters:param.toString()
-connection:"zcrm"
-];
-info response;
-updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Customer & Supplier"});
-info updt;
+	dataMap = Map();
+	dataMap.put("Notes","Updated via blueprint");
+	blueprint1 = Map();
+	blueprint1.put("transition_id",TRANSITION_TO_CUSTOMER);
+	blueprint1.put("data",dataMap);
+	blueprintList = List();
+	blueprintList.add(blueprint1);
+	param = Map();
+	param.put("blueprint",blueprintList);
+	response = invokeurl
+	[
+	url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+	type :PUT
+	parameters:param.toString()
+	connection:"zcrm"
+	];
+	info response;
+	updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Customer & Supplier"});
+	info updt;
 }
+//
+// Supplier on the Lead Qualification Blueprint → move to Supplier Blueprint
 if(prospect_type == "Supplier" && blueprint == "Lead Qualification")
 {
-transtition_id = "6102667000000583579";
-dataMap = Map();
-dataMap.put("Notes","Updated via blueprint");
-blueprint1 = Map();
-blueprint1.put("transition_id",transtition_id);
-blueprint1.put("data",dataMap);
-blueprintList = List();
-blueprintList.add(blueprint1);
-param = Map();
-param.put("blueprint",blueprintList);
-response = invokeurl
-[
-url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
-type :PUT
-parameters:param.toString()
-connection:"zcrm"
-];
-info response;
-updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Supplier"});
-info updt;
+	dataMap = Map();
+	dataMap.put("Notes","Updated via blueprint");
+	blueprint1 = Map();
+	blueprint1.put("transition_id",TRANSITION_TO_SUPPLIER);
+	blueprint1.put("data",dataMap);
+	blueprintList = List();
+	blueprintList.add(blueprint1);
+	param = Map();
+	param.put("blueprint",blueprintList);
+	response = invokeurl
+	[
+	url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+	type :PUT
+	parameters:param.toString()
+	connection:"zcrm"
+	];
+	info response;
+	updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Supplier"});
+	info updt;
 }

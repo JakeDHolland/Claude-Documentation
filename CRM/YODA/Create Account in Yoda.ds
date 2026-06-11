@@ -1,18 +1,38 @@
-// Original author - Jake Holland
-// Contributing developers:
-// - Prince Rajput
-//
-// @input.account_id - The account record ID to generate and address for.
-//
-// get the account record
+// /**
+//  * FUNCTION: Create Account in Yoda
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Syncs a single Account record to Yoda as a company.
+//  *          Does not sync related Contacts or Addresses.
+//  *          Use yoda_trigger_sync for a full account sync.
+//  *
+//  * @trigger Button: "Create in Yoda" on Account detail view
+//  *
+//  * @param   account_id {String} — The CRM Account record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends yoda_get_intergration_settings
+//  *          yoda_sync_record
+//  *
+//  * @flow
+//  *   1. Fetch Account record
+//  *   2. Load integration settings
+//  *   3. Sync Account → Yoda company (POST or PUT)
+//  *
+//  * @authors  Jake Holland (original)
+//  *           Prince Rajput (contributor)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 record_info = zoho.crm.getRecordById("Accounts",account_id);
 settings = standalone.yoda_get_intergration_settings();
 yoda_path = settings.get("credentials").get("root");
-//=========Create/Update Account ===========Working==========
-//It is the same function as create. We use tthe Yoda_id field on the record to identify if the record should be create or updated
 //
-// we don't just feed in the record_id since doing it outside the create_function allows us to inject any additional information into the mapping. 
-// e.g. we can inject the related account yoda id when syncing an account into the contact map so we dont need to search for it inside yoda_create_record allowing it to be more generic
+// It is the same function for create and update. The Yoda_Id field on the record
+// determines whether a POST (create) or PUT (update) is issued.
 //
+// We pass record_info rather than just account_id so additional data can be
+// injected into the map before translation without changing this function.
 trigger = standalone.yoda_sync_record("Accounts",record_info);
 info trigger;

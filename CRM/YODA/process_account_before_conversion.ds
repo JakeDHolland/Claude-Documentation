@@ -1,7 +1,38 @@
+// /**
+//  * FUNCTION: process_account_before_conversion
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Normalises CRM Account field values into the formats
+//  *          Yoda's API expects before the record is translated
+//  *          and synced. Also resolves lookup IDs for payment
+//  *          terms, delivery terms, and the default salesperson
+//  *          by querying the Yoda API.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   record_info {Map} — Raw CRM Account record map
+//  *
+//  * @returns {Map} — Modified record_info ready for translation
+//  *
+//  * @depends yoda_fetch_record
+//  *          fetch_yoda_user_id
+//  *
+//  * @flow
+//  *   1. Convert Dutch_VAT_Term to Yoda enum ("none" / "dutch_vat")
+//  *   2. Convert Operating_Region to Yoda region code
+//  *   3. Convert Account_Type to lowercase_underscore format
+//  *   4. Set Customer / Supplier boolean flags from Lead_Prospect_Type
+//  *   5. Look up payment term ID in Yoda and inject as paymentTerm
+//  *   6. Look up delivery term ID in Yoda and inject as deliveryTerm
+//  *   7. Look up owner's Yoda user ID and inject as defaultSalesperson
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 record_info = record_info.toMap();
 //
-//
-// Yoda only accepts the formats below. They are not end user friendly so we are converting it when yoda syncs
+// Yoda only accepts the enum values below — convert from CRM display values
 dutch_vat = record_info.get("Dutch_VAT_Term");
 if(dutch_vat == "No" || dutch_vat == null || dutch_vat == "")
 {
@@ -12,21 +43,19 @@ else
 	record_info.put("Dutch_VAT_Term","dutch_vat");
 }
 //
-//
-// set region
+// Convert Operating_Region display value to Yoda region code
 region_conversion_map = {"UK":"uk","Netherlands":"nl","Other EC":"ec","Other":"other"};
 operating_region = record_info.get("Operating_Region");
 operating_region_converted = region_conversion_map.get(operating_region);
 record_info.put("Operating_Region",operating_region_converted);
 //
-//
-// set accoun type to a yoda friendly format so it ca1n be transalted later
+// Yoda expects account type as lowercase with underscores e.g. "key_account"
 account_type = record_info.get("Account_Type").toLowerCase().replaceAll(" ","_").replaceAll("-","_");
 record_info.put("Account_Type",account_type);
 info "account_type: " + account_type;
 //
-//
-// calculate record type to a yoda friendly format so it ca1n be transalted later
+// Set Customer/Supplier boolean flags and select the correct terms fields
+// Customer & Supplier uses Customer terms for Yoda mapping
 if(record_info.get("Lead_Prospect_Type") == "Customer")
 {
 	record_info.put("Customer",true);
@@ -48,10 +77,8 @@ else if(record_info.get("Lead_Prospect_Type") == "Customer & Supplier")
 }
 info "Lead_Prospect_Type: " + record_info.get("Lead_Prospect_Type");
 //
-//
-// Fetch payment terms id in yoda
-// we store the value as a string but in yoda it is a lookup field so we need to provide it the id of the record
-// Fetch correct Terms fields. If the Account is a Customer & Supplier, the Customer Terms should be mapped to Yoda.
+// Yoda stores payment terms as a lookup ID, not a label string.
+// Fetch the matching Yoda record ID by label and inject it.
 module = "payment-terms";
 encode_payment_term = encodeURL(payment_term);
 critera = "label=" + encode_payment_term;
@@ -65,17 +92,13 @@ if(payment_size == 1)
 	record_info.put("paymentTerm",payment_term_id);
 }
 //
-//
-// Fetch Delivery terms id in yoda
-// we store the value as a string but in yoda it is a lookup field so we need to provide it the id of the record
+// Fetch delivery term ID from Yoda by label and inject it
 module = "delivery-terms";
 encode_delivery_term = encodeURL(delivery_term);
-// info "delivery_term: " + delivery_term;
 critera = "label=" + encode_delivery_term;
 response = standalone.yoda_fetch_record(module,critera);
 response = response.toMap();
 data = response.get("data");
-// info data;
 delivery_size = data.size();
 if(delivery_size == 1)
 {
@@ -83,14 +106,12 @@ if(delivery_size == 1)
 	record_info.put("deliveryTerm",delivery_term_id);
 }
 //
-//
-// Fetch record owner Yoda id
+// Fetch the record owner's Yoda user ID and inject as defaultSalesperson
 user_id = record_info.get("Owner").get("id");
 yoda_user_id = standalone.fetch_yoda_user_id(user_id);
 if(yoda_user_id != "MISSING")
 {
 	record_info.put("defaultSalesperson",yoda_user_id);
 }
-//
 //
 return record_info;

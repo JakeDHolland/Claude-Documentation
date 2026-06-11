@@ -1,27 +1,43 @@
-// Original author - Jake Holland
-//
-// @input.value - The value to check.
-//
-// @desc A basic type check function to see if a value can be translated into a valid array from JSON.
-//
-// @depends none
-// @returns boolean - True or false depending on the result of the type check.
-//
-// WARNING: As this function can only return a string in CRM
-// the return value will have to be checked after converting
-// to a boolean like this:
-// standalone.is_array(value) == "true"
-//
-// set as a value of a map and then strip the surrounding map from the value
-// NOTE: This normalises actual deluge list varialbes into JSON notation.
-// Calling toString on a list in deluge wont surround the list with a square
-// brackets as we would expect in a JSON array.
+// /**
+//  * FUNCTION: is_array
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Checks whether a value can be interpreted as a valid
+//  *          JSON array. Normalises Deluge list variables into JSON
+//  *          notation before checking, since toString() on a Deluge
+//  *          list does not add the surrounding square brackets.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   value {Any} — The value to inspect
+//  *
+//  * @returns {String} — "true" if the value is a valid array,
+//  *                     "false" otherwise.
+//  *
+//  *          WARNING: Deluge standalone functions cannot return a
+//  *          native boolean. Always compare as a string:
+//  *            standalone.is_array(value) == "true"
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Wrap value in a map and stringify to normalise Deluge lists
+//  *   2. Strip the surrounding map wrapper to isolate the value string
+//  *   3. Unwrap quotes if the value is a stringified array
+//  *   4. Check if first and last characters are "[" and "]"
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
+
+// Wrap in a map and stringify to normalise Deluge list variables into JSON array notation
 map_value = {"value":value};
 map_value = map_value.toString();
 translated_value = map_value.subString(9);
 translated_value = translated_value.subString(0,translated_value.length() - 1);
 //
-// check if array is potentially stringified
+// Unwrap quotes if the value was stored as a stringified array
 first_character = IF(translated_value.length() > 0,translated_value.subString(0,1),null);
 if(first_character == "\"")
 {
@@ -29,9 +45,7 @@ if(first_character == "\"")
 	translated_value = translated_value.removeLastOccurence("\"");
 }
 //
-// check surrounding characters
-// NOTE: When the first and last character are a bracket we will treat it as a valid
-// array value because it should be possible to parse as a JSON array.
+// A value is treated as a valid array if it starts with "[" and ends with "]"
 first_character = IF(translated_value.length() > 0,translated_value.subString(0,1),null);
 last_character = IF(translated_value.length() > 0,translated_value.subString(translated_value.length() - 1),null);
 if(first_character == "[" && last_character == "]")
@@ -39,5 +53,4 @@ if(first_character == "[" && last_character == "]")
 	return true;
 }
 //
-// must not be an array
 return false;

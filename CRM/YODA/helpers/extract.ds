@@ -1,47 +1,56 @@
-// Original author - Jake Holland
-// Contributing developers:
-// -
-//
-// @input string path - The location to pull the value from.
-// @input string data - The object to fetch.
-//
-// @desc Allows you to fetch data along a path
-// that is nested within a complex object.
-// Includes array indexes such as:
-// path/to/value/[0]/first_item_prop
-//
-// @depends none
-// @returns string - The data found at the path or null.
-//
-// default the result data if no path is given
+// /**
+//  * FUNCTION: extract
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Reads a value from a nested map or list using a
+//  *          slash-delimited path string. Supports array index
+//  *          access using square bracket notation.
+//  *
+//  * @trigger Called internally — not triggered directly by CRM
+//  *
+//  * @param   path {String} — Slash-delimited path to the value.
+//  *                          Use [N] for array index access.
+//  *                          e.g. "attributes/totals/GBP"
+//  *                          e.g. "items/[0]/name"
+//  *                          Pass null or "" to return data as-is.
+//  * @param   data {Map|List} — The source object to traverse
+//  *
+//  * @returns {Any} — The value at the path, or null if not found
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Default result to the full data object
+//  *   2. Split path into accessors on "/"
+//  *   3. For each accessor: if "[N]" convert to list and get by index,
+//  *      otherwise get by map key
+//  *   4. Return result
+//  *
+//  * @authors  Jake Holland (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 result = data;
 //
-// evaluate the path
-// NOTE: This will be something like: "a/path/to/the/data/[1]"
-// Where square brackets are used to access a static index within and array.
 if(path != null && path != "")
 {
-	// split path into keys
 	accessors = path.toList("/");
 	for each  accessor in accessors
 	{
-		// check for index
 		if(accessor.startsWith("["))
 		{
-			// get the index
+			// Array index access — extract the integer from [N]
 			index = accessor.getAlphaNumeric().removeAllAlpha().toLong();
-			// convert to list and check size before fetching data
 			items = IFNULL(result,List()).toList();
 			result = IF(items.size() > index,items.get(index),null);
 		}
 		else
 		{
-			// map as a regular object key
+			// Map key access
 			item = IFNULL(result,Map()).toString().toMap();
 			result = item.get(accessor);
 		}
 	}
 }
 //
-// return the resulting data
 return result;

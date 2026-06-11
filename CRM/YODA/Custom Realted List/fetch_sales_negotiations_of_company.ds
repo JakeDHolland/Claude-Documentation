@@ -1,12 +1,29 @@
-// Original author - Dash Bunyan
-// Contributing developers:
-// - Jake Holland
-// - Prince Rajput
-// @input.record_id - The ID of the Opportunity the orders are attached to.
-//
-//
-//
-// call function that will build our related list
+// /**
+//  * FUNCTION: fetch_sales_negotiations_of_company
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Entry point for the Sales Negotiations custom related
+//  *          list on the Account detail view. Fetches all sales
+//  *          negotiations from Yoda linked to the Account and
+//  *          returns them as XML for CRM to render.
+//  *
+//  * @trigger Custom Related List: Accounts — Sales Negotiations
+//  *
+//  * @param   record_id {String} — The CRM Account record ID
+//  *
+//  * @returns {String} — XML string for CRM related list rendering,
+//  *                     or empty string if Account has no Yoda_Id
+//  *
+//  * @depends build_related_list
+//  *
+//  * @flow
+//  *   1. Delegate to build_related_list with module "Accounts"
+//  *      and yoda_module "sales-negotiations"
+//  *
+//  * @authors  Dash Bunyan (original)
+//  *           Jake Holland, Prince Rajput (contributors)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 data_xml = standalone.build_related_list("Accounts",record_id,"sales-negotiations");
-// return the xml list
 return data_xml;

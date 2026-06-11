@@ -1,13 +1,40 @@
-// Original author - Prince Rajput
-// Contributing developers:
-//
-// @input.record_id - The account record ID to fetch the account record response.
-//
-// get the account record
+// /**
+//  * FUNCTION: Update New Customer Status in Accounts
+//  * ─────────────────────────────────────────────────────────────
+//  * @desc    Evaluates a set of onboarding checklist fields on an
+//  *          Account and sets the New_Customer_Status field to
+//  *          "Not Started", "In Progress", or "Complete".
+//  *
+//  *          The fields checked depend on Lead_Prospect_Type:
+//  *            Customer          → customer checklist fields
+//  *            Supplier          → supplier checklist fields
+//  *            Customer&Supplier → both checklists combined
+//  *
+//  * @trigger Workflow: Accounts — On Edit (any checklist field changes)
+//  *
+//  * @param   record_id {String} — The CRM Account record ID
+//  *
+//  * @returns {void}
+//  *
+//  * @depends none
+//  *
+//  * @flow
+//  *   1. Fetch Account and read Lead_Prospect_Type
+//  *   2. Read all relevant checklist fields
+//  *   3. Evaluate: all null → "Not Started"
+//  *                all populated → "Complete"
+//  *                mixed → "In Progress"
+//  *   4. Update New_Customer_Status on the Account
+//  *
+//  * @authors  Prince Rajput (original)
+//  *
+//  * @updated  DD/MM/YYYY — Description of change
+//  * ─────────────────────────────────────────────────────────────
+//  */
 response = zoho.crm.getRecordById("Accounts",record_id);
 account_prospect_type = response.get("Lead_Prospect_Type");
-// info response;
-//fetching all the fields which needs to be checked
+//
+// Read all checklist fields
 New_Customer_Form_Received = response.get("New_Customer_Form_Received");
 New_Customer_Form_Checks_Completed = response.get("New_Customer_Form_Checks_Completed");
 Currency_Confirmed = response.get("Currency_Confirmed");
@@ -27,58 +54,64 @@ New_Supplier_Form_Checks_Completed = response.get("New_Supplier_Form_Checks_Comp
 New_Line_Form_Received = response.get("New_Line_Form_Received");
 New_Customer_Form_Returned = response.get("New_Customer_Form_Returned");
 References_Sent = response.get("References_Sent");
-//Checking the Fields value and based on that updating the status of the New_Customer_Status field.
+//
+// Named booleans for readability
+customer_fields_empty = (New_Customer_Form_Received == null && New_Customer_Form_Checks_Completed == null && Currency_Confirmed == null && Payment_Terms_Confirmed == null && Credit_Limit_Confirmed == null && Delivery_Terms_Confirmed == null && New_Line_Form_Returned == null && Contract_Review_Complete == null && Terms_Conditions_Review_Complete == null && Packing_Instructions_Review_Complete == null && Delivery_Instructions_Review_Complete == null && References_Received == null);
+customer_fields_complete = (New_Customer_Form_Received != null && New_Customer_Form_Checks_Completed != null && Currency_Confirmed != null && Payment_Terms_Confirmed != null && Credit_Limit_Confirmed != null && Delivery_Terms_Confirmed != null && New_Line_Form_Returned != null && Contract_Review_Complete != null && Terms_Conditions_Review_Complete != null && Packing_Instructions_Review_Complete != null && Delivery_Instructions_Review_Complete != null && References_Received != null);
+supplier_fields_empty = (New_Supplier_Form_Received == null && New_Supplier_Form_Checks_Completed == null && New_Line_Form_Received == null && New_Customer_Form_Returned == null && References_Sent == null);
+supplier_fields_complete = (New_Supplier_Form_Received != null && New_Supplier_Form_Checks_Completed != null && New_Line_Form_Received != null && New_Customer_Form_Returned != null && References_Sent != null);
+//
 if(account_prospect_type == "Customer")
 {
-if(New_Customer_Form_Received == null && New_Customer_Form_Checks_Completed == null && Currency_Confirmed == null && Payment_Terms_Confirmed == null && Credit_Limit_Confirmed == null && Delivery_Terms_Confirmed == null && New_Line_Form_Returned == null && Contract_Review_Complete == null && Terms_Conditions_Review_Complete == null && Packing_Instructions_Review_Complete == null && Delivery_Instructions_Review_Complete == null && References_Received == null)
-{
-update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Not Started"});
-info update_rec;
-}
-else if(New_Customer_Form_Received != null && New_Customer_Form_Checks_Completed != null && Currency_Confirmed != null && Payment_Terms_Confirmed != null && Credit_Limit_Confirmed != null && Delivery_Terms_Confirmed != null && New_Line_Form_Returned != null && Contract_Review_Complete != null && Terms_Conditions_Review_Complete != null && Packing_Instructions_Review_Complete != null && Delivery_Instructions_Review_Complete != null && References_Received != null)
-{
-update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Complete"});
-info update_rec;
-}
-else
-{
-update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"In Progress"});
-info update_rec;
-}
+	if(customer_fields_empty)
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Not Started"});
+		info update_rec;
+	}
+	else if(customer_fields_complete)
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Complete"});
+		info update_rec;
+	}
+	else
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"In Progress"});
+		info update_rec;
+	}
 }
 if(account_prospect_type == "Supplier")
 {
-if(New_Supplier_Form_Received == null && New_Supplier_Form_Checks_Completed == null && New_Line_Form_Received == null && New_Customer_Form_Returned == null && References_Sent == null)
-{
-update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Not Started"});
-info update_rec;
-}
-else if(New_Supplier_Form_Received != null && New_Supplier_Form_Checks_Completed != null && New_Line_Form_Received != null && New_Customer_Form_Returned != null && References_Sent != null)
-{
-update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Complete"});
-info update_rec;
-}
-else
-{
-update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"In Progress"});
-info update_rec;
-}
+	if(supplier_fields_empty)
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Not Started"});
+		info update_rec;
+	}
+	else if(supplier_fields_complete)
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Complete"});
+		info update_rec;
+	}
+	else
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"In Progress"});
+		info update_rec;
+	}
 }
 if(account_prospect_type == "Customer & Supplier")
 {
-if(New_Customer_Form_Received == null && New_Customer_Form_Checks_Completed == null && Currency_Confirmed == null && Payment_Terms_Confirmed == null && Credit_Limit_Confirmed == null && Delivery_Terms_Confirmed == null && New_Line_Form_Returned == null && Contract_Review_Complete == null && Terms_Conditions_Review_Complete == null && Packing_Instructions_Review_Complete == null && Delivery_Instructions_Review_Complete == null && References_Received == null && New_Supplier_Form_Received == null && New_Supplier_Form_Checks_Completed == null && New_Line_Form_Received == null && New_Customer_Form_Returned == null && References_Sent == null)
-{
-update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Not Started"});
-info update_rec;
-}
-else if(New_Customer_Form_Received != null && New_Customer_Form_Checks_Completed != null && Currency_Confirmed != null && Payment_Terms_Confirmed != null && Credit_Limit_Confirmed != null && Delivery_Terms_Confirmed != null && New_Line_Form_Returned != null && Contract_Review_Complete != null && Terms_Conditions_Review_Complete != null && Packing_Instructions_Review_Complete != null && Delivery_Instructions_Review_Complete != null && References_Received != null && New_Supplier_Form_Received != null && New_Supplier_Form_Checks_Completed != null && New_Line_Form_Received != null && New_Customer_Form_Returned != null && References_Sent != null)
-{
-update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Complete"});
-info update_rec;
-}
-else
-{
-update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"In Progress"});
-info update_rec;
-}
+	if(customer_fields_empty && supplier_fields_empty)
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Not Started"});
+		info update_rec;
+	}
+	else if(customer_fields_complete && supplier_fields_complete)
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"Complete"});
+		info update_rec;
+	}
+	else
+	{
+		update_rec = zoho.crm.updateRecord("Accounts",record_id,{"New_Customer_Status":"In Progress"});
+		info update_rec;
+	}
 }
