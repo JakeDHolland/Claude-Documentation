@@ -1,0 +1,84 @@
+// Original author - Jake Holland
+// Contributing developers:
+// - Dash Bunyan
+//
+// NOTE: Used to create a standard log message for audit and bug fixing purposes.
+//
+// @name - create_log
+// @input.type - Either error, warning or info.
+// @input.title - Summary of the log information.
+// @input.message - Data content of the log.
+// @return - String - A JSON encoded object of the log creating result.
+//
+title_list = title.toList(" ");
+for each x in title_list
+{
+	record_id = x;
+}
+info record_id;
+// set contants
+MESSAGE_LIMIT = 32000;
+NOTE_LIMIT = 65535;
+//
+// prepare a payload
+payload = Map();
+payload.put("Status",status);
+payload.put("Title",title);
+payload.put("Message",message);
+//
+if(module = "Accounts")
+{
+	payload.put("Account", record_id);
+}
+else if (module = "Contacts")
+{
+	payload.put("Contact", record_id);
+}
+else if (module = "Addresses")
+{
+	payload.put("Address", record_id);
+}
+//
+// truncated message
+truncated = false;
+if(message != null && message.length() > MESSAGE_LIMIT)
+{
+	payload.put("Message",message.left(MESSAGE_LIMIT));
+	truncated = true;
+}
+//
+// add the log record
+response = zoho.crm.createRecord("Audit_Logs",payload,{"trigger":{"workflow"}});
+info response;
+//
+// check if truncated
+// NOTE: The note on a record has a higher character limit so we can use it as well
+// when the message field has to be truncated.
+if(truncated == true)
+{
+	// get the id of the new log record
+	log_id = response.get("id");
+	//
+	// prepare the note title
+	note_title = "Content over Multiline limit of " + MESSAGE_LIMIT + " characters.";
+	//
+	// prepare a note
+	note_payload = Map();
+	note_payload.put("Parent_Id",log_id);
+	note_payload.put("Note_Title",note_title);
+	note_payload.put("Note_Content",message);
+	note_payload.put("$se_module","Audit_Logs");
+	//
+	// may still need to truncate this one too
+	if(message.length() > NOTE_LIMIT)
+	{
+		note_title = note_title + " Also over note limit of " + NOTE_LIMIT + " characters.";
+		note_payload.put("Note_Content",message.left(NOTE_LIMIT));
+	}
+	//
+	// create the note
+	note_response = zoho.crm.createRecord("Notes",note_payload);
+}
+//
+// return result of the record creation
+return response;

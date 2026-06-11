@@ -1,0 +1,84 @@
+record_info = zoho.crm.getRecordById("Leads",id);
+// info record_info;
+prospect_type = record_info.get("Lead_Prospect_Type");
+response = invokeurl
+[
+url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+type :GET
+connection:"zcrm"
+];
+info response;
+transitions = response.get("blueprint").get("transitions");
+// info transitions;
+blueprint = response.get("blueprint").get("process_info").get("name");
+// info blueprint;
+// info prospect_type;
+if(prospect_type == "Customer" && blueprint == "Supplier Blueprint")
+{
+transtition_id = "6102667000001448432";
+dataMap = Map();
+dataMap.put("Notes","Updated via blueprint");
+blueprint1 = Map();
+blueprint1.put("transition_id",transtition_id);
+blueprint1.put("data",dataMap);
+blueprintList = List();
+blueprintList.add(blueprint1);
+param = Map();
+param.put("blueprint",blueprintList);
+response = invokeurl
+[
+url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+type :PUT
+parameters:param.toString()
+connection:"zcrm"
+];
+info response;
+updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Customer"});
+info updt;
+}
+if(prospect_type == "Customer & Supplier" && blueprint == "Supplier Blueprint")
+{
+transtition_id = "6102667000001448432";
+dataMap = Map();
+dataMap.put("Notes","Updated via blueprint");
+blueprint1 = Map();
+blueprint1.put("transition_id",transtition_id);
+blueprint1.put("data",dataMap);
+blueprintList = List();
+blueprintList.add(blueprint1);
+param = Map();
+param.put("blueprint",blueprintList);
+response = invokeurl
+[
+url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+type :PUT
+parameters:param.toString()
+connection:"zcrm"
+];
+info response;
+updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Customer & Supplier"});
+info updt;
+}
+if(prospect_type == "Supplier" && blueprint == "Lead Qualification")
+{
+transtition_id = "6102667000000583579";
+dataMap = Map();
+dataMap.put("Notes","Updated via blueprint");
+blueprint1 = Map();
+blueprint1.put("transition_id",transtition_id);
+blueprint1.put("data",dataMap);
+blueprintList = List();
+blueprintList.add(blueprint1);
+param = Map();
+param.put("blueprint",blueprintList);
+response = invokeurl
+[
+url :"https://www.zohoapis.com/crm/v6/Leads/" + id + "/actions/blueprint"
+type :PUT
+parameters:param.toString()
+connection:"zcrm"
+];
+info response;
+updt = zoho.crm.updateRecord("Leads",id,{"Lead_Status":"","Lead_Prospect_Type":"Supplier"});
+info updt;
+}

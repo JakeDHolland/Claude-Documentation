@@ -1,0 +1,96 @@
+record_info = record_info.toMap();
+//
+//
+// Yoda only accepts the formats below. They are not end user friendly so we are converting it when yoda syncs
+dutch_vat = record_info.get("Dutch_VAT_Term");
+if(dutch_vat == "No" || dutch_vat == null || dutch_vat == "")
+{
+	record_info.put("Dutch_VAT_Term","none");
+}
+else
+{
+	record_info.put("Dutch_VAT_Term","dutch_vat");
+}
+//
+//
+// set region
+region_conversion_map = {"UK":"uk","Netherlands":"nl","Other EC":"ec","Other":"other"};
+operating_region = record_info.get("Operating_Region");
+operating_region_converted = region_conversion_map.get(operating_region);
+record_info.put("Operating_Region",operating_region_converted);
+//
+//
+// set accoun type to a yoda friendly format so it ca1n be transalted later
+account_type = record_info.get("Account_Type").toLowerCase().replaceAll(" ","_").replaceAll("-","_");
+record_info.put("Account_Type",account_type);
+info "account_type: " + account_type;
+//
+//
+// calculate record type to a yoda friendly format so it ca1n be transalted later
+if(record_info.get("Lead_Prospect_Type") == "Customer")
+{
+	record_info.put("Customer",true);
+	payment_term = record_info.get("Payment_Terms");
+	delivery_term = record_info.get("Delivery_Terms");
+}
+else if(record_info.get("Lead_Prospect_Type") == "Supplier")
+{
+	record_info.put("Supplier",true);
+	payment_term = record_info.get("Supplier_Payment_Terms1");
+	delivery_term = record_info.get("Supplier_Delivery_Terms");
+}
+else if(record_info.get("Lead_Prospect_Type") == "Customer & Supplier")
+{
+	record_info.put("Customer",true);
+	record_info.put("Supplier",true);
+	payment_term = record_info.get("Payment_Terms");
+	delivery_term = record_info.get("Delivery_Terms");
+}
+info "Lead_Prospect_Type: " + record_info.get("Lead_Prospect_Type");
+//
+//
+// Fetch payment terms id in yoda
+// we store the value as a string but in yoda it is a lookup field so we need to provide it the id of the record
+// Fetch correct Terms fields. If the Account is a Customer & Supplier, the Customer Terms should be mapped to Yoda.
+module = "payment-terms";
+encode_payment_term = encodeURL(payment_term);
+critera = "label=" + encode_payment_term;
+response = standalone.yoda_fetch_record(module,critera);
+response = response.toMap();
+data = response.get("data");
+payment_size = data.size();
+if(payment_size == 1)
+{
+	payment_term_id = data.get(0).get("id");
+	record_info.put("paymentTerm",payment_term_id);
+}
+//
+//
+// Fetch Delivery terms id in yoda
+// we store the value as a string but in yoda it is a lookup field so we need to provide it the id of the record
+module = "delivery-terms";
+encode_delivery_term = encodeURL(delivery_term);
+// info "delivery_term: " + delivery_term;
+critera = "label=" + encode_delivery_term;
+response = standalone.yoda_fetch_record(module,critera);
+response = response.toMap();
+data = response.get("data");
+// info data;
+delivery_size = data.size();
+if(delivery_size == 1)
+{
+	delivery_term_id = data.get(0).get("id");
+	record_info.put("deliveryTerm",delivery_term_id);
+}
+//
+//
+// Fetch record owner Yoda id
+user_id = record_info.get("Owner").get("id");
+yoda_user_id = standalone.fetch_yoda_user_id(user_id);
+if(yoda_user_id != "MISSING")
+{
+	record_info.put("defaultSalesperson",yoda_user_id);
+}
+//
+//
+return record_info;

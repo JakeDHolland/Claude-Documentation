@@ -1,0 +1,85 @@
+// Original author - Prince Rajput
+// Contributing developers:
+//
+// @input.record_id - The account record ID to fetch the account record response.
+//
+// get the account record
+response = zoho.crm.getRecordById("Leads",record_id);
+lead_prospect_type = response.get("Lead_Prospect_Type");
+// info response;
+//fetching all the fields which needs to be checked
+New_Customer_Form_Received = response.get("New_Customer_Form_Received");
+New_Customer_Form_Checks_Completed = response.get("New_Customer_Form_Checks_Completed");
+Currency_Confirmed = response.get("Currency_Confirmed");
+Payment_Terms_Confirmed = response.get("Payment_Terms_Confirmed");
+Credit_Limit_Confirmed = response.get("Credit_Limit_Confirmed");
+Delivery_Terms_Confirmed = response.get("Delivery_Terms_Confirmed");
+New_Line_Form_Returned = response.get("New_Line_Form_Returned");
+Stickers_Required = response.get("Stickers_Required");
+EUR_1_Forms_Required = response.get("EUR_1_Forms_Required");
+Contract_Review_Complete = response.get("Contract_Review_Complete");
+Terms_Conditions_Review_Complete = response.get("Terms_Conditions_Review_Complete");
+Packing_Instructions_Review_Complete = response.get("Packing_Instructions_Review_Complete");
+Delivery_Instructions_Review_Complete = response.get("Delivery_Instructions_Review_Complete");
+References_Received = response.get("References_Received");
+New_Supplier_Form_Received = response.get("New_Supplier_Form_Received");
+New_Supplier_Form_Checks_Completed = response.get("New_Supplier_Form_Checks_Completed");
+New_Line_Form_Received = response.get("New_Line_Form_Received");
+New_Customer_Form_Returned = response.get("New_Customer_Form_Returned");
+References_Sent = response.get("References_Sent");
+//
+//Checking the Fields value and based on that updating the status of the New_Customer_Status field.
+if(lead_prospect_type == "Customer")
+{
+if(New_Customer_Form_Received == null && New_Customer_Form_Checks_Completed == null && Currency_Confirmed == null && Payment_Terms_Confirmed == null && Credit_Limit_Confirmed == null && Delivery_Terms_Confirmed == null && New_Line_Form_Returned == null && Contract_Review_Complete == null && Terms_Conditions_Review_Complete == null && Packing_Instructions_Review_Complete == null && Delivery_Instructions_Review_Complete == null && References_Received == null)
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Not Started"});
+info update_rec;
+}
+else if(New_Customer_Form_Received != null && New_Customer_Form_Checks_Completed != null && Currency_Confirmed != null && Payment_Terms_Confirmed != null && Credit_Limit_Confirmed != null && Delivery_Terms_Confirmed != null && New_Line_Form_Returned != null && Contract_Review_Complete != null && Terms_Conditions_Review_Complete != null && Packing_Instructions_Review_Complete != null && Delivery_Instructions_Review_Complete != null && References_Received != null)
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Complete"});
+info update_rec;
+}
+else
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"In Progress"});
+info update_rec;
+}
+}
+if(lead_prospect_type == "Supplier")
+{
+if(New_Supplier_Form_Received == null && New_Supplier_Form_Checks_Completed == null && New_Line_Form_Received == null && New_Customer_Form_Returned == null && References_Sent == null)
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Not Started"});
+info update_rec;
+}
+else if(New_Supplier_Form_Received != null && New_Supplier_Form_Checks_Completed != null && New_Line_Form_Received != null && New_Customer_Form_Returned != null && References_Sent != null)
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Complete"});
+info update_rec;
+}
+else
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"In Progress"});
+info update_rec;
+}
+}
+if(lead_prospect_type == "Customer & Supplier")
+{
+if(New_Customer_Form_Received == null && New_Customer_Form_Checks_Completed == null && Currency_Confirmed == null && Payment_Terms_Confirmed == null && Credit_Limit_Confirmed == null && Delivery_Terms_Confirmed == null && New_Line_Form_Returned == null && Contract_Review_Complete == null && Terms_Conditions_Review_Complete == null && Packing_Instructions_Review_Complete == null && Delivery_Instructions_Review_Complete == null && References_Received == null && New_Supplier_Form_Received == null && New_Supplier_Form_Checks_Completed == null && New_Line_Form_Received == null && New_Customer_Form_Returned == null && References_Sent == null)
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Not Started"});
+info update_rec;
+}
+else if(New_Customer_Form_Received != null && New_Customer_Form_Checks_Completed != null && Currency_Confirmed != null && Payment_Terms_Confirmed != null && Credit_Limit_Confirmed != null && Delivery_Terms_Confirmed != null && New_Line_Form_Returned != null && Contract_Review_Complete != null && Terms_Conditions_Review_Complete != null && Packing_Instructions_Review_Complete != null && Delivery_Instructions_Review_Complete != null && References_Received != null && New_Supplier_Form_Received != null && New_Supplier_Form_Checks_Completed != null && New_Line_Form_Received != null && New_Customer_Form_Returned != null && References_Sent != null)
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"Complete"});
+info update_rec;
+}
+else
+{
+update_rec = zoho.crm.updateRecord("Leads",record_id,{"New_Customer_Status":"In Progress"});
+info update_rec;
+}
+}

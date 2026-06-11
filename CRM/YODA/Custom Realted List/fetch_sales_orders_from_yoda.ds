@@ -1,0 +1,412 @@
+// Original author - Dash Bunyan
+// Contributing developers:
+// - Jake Holland
+// - Prince Rajput
+// - Owen Kempton
+// @input.record_id - The ID of the Opportunity the orders are attached to.
+//
+//
+module = "Accounts";
+yoda_module = "sales-orders";
+//
+// call function that will build our related list 
+// data_xml = "<record><row no='0'><FL val='ID (negotiation #)'>SO0001887</FL><FL val='Status'>70</FL><FL val='Assigned To'>Andrew Horsfield</FL><FL val='Customer'>Lynne Morrison</FL><FL val='Value'>4395135</FL><FL val='Value (GBP)'>4395135</FL><FL val='Reference'>Fragrance / August / PO 221214</FL><FL val='Created On'>2022-06-08T09:43:37+00:00</FL></row></record>";
+// // Original author - Dash Bunyan
+// // Contributing developers:
+// // - Jake Holland
+// // - Prince Rajput
+// // - Owen Kempton
+// // @input.module - module the related list is on in CRM.
+// // @input.record_id - The ID of the Opportunity the orders are attached to.
+// // @input.yoda_module - yoda name of module we are fetching data from
+// //
+// set defaults
+OPEN_ERROR = "<error><message>";
+CLOSE_ERROR = "</message></error>";
+NO_CONTENT = "No items found";
+NO_FOLDER = "No folder found";
+//
+//negotiation
+//
+// TESTING
+// 529 <like 27
+// 105 <-- 1
+//
+// get the Contact from CRM
+record_info = zoho.crm.getRecordById(module,record_id);
+if(record_info.isNull())
+{
+	error = "Failed Sales Order - Failed to fetch Contact ID - " + record_id;
+	create_log = standalone.create_log("ERROR",error,record_info,"");
+	return "";
+}
+//
+yoda_id = record_info.get("Yoda_Id");
+if(yoda_id == null)
+{
+	return "";
+}
+// ____________________________________
+// Loop to grab multiple pages from API
+full_data = List();
+// Grab list from range function
+range = standalone.range(500).toList();
+//
+for each index i in range
+{
+	// Loop to make multiple API calls
+	//
+	page_number = i + 1;
+	// Use the loop to get the page number
+	page_size = 100;
+	// Maximum page_size suggested by beauty net is 100
+	//Initialize page number
+	//
+	if(yoda_module == "sales-negotiations" || yoda_module == "sales-orders")
+	{
+		critera = "contact.company=" + yoda_id + "&itemsPerPage=" + page_size + "&page=" + page_number + "&order[created]=desc";
+		//"&order[created]=asc"
+		//;
+	}
+	try 
+	{
+		response = standalone.yoda_fetch_record(yoda_module,critera);
+		response = response.toMap();
+		//info response.get("data");
+		//Check for null response and log
+		if(response.isNull())
+		{
+			error = "Failed " + yoda_module + " - Null Return from Yoda - " + record_id;
+			info error;
+			create_log = standalone.create_log("ERROR",error,response,"");
+			return "";
+		}
+	}
+	catch (error)
+	{
+		//Handle error for poor response from API.
+		info "Failed " + yoda_module + " - Null Return from Yoda - " + record_id + ". " + error;
+		create_log = standalone.create_log("ERROR","Failed " + yoda_module + " - Null Return from Yoda - " + record_id + ". " + error,response,"");
+		return "";
+	}
+	data = response.get("data");
+	data_size = data.size();
+	info "Records Found: " + data_size;
+	full_data.addAll(data);
+	if(data_size < page_size)
+	{
+		//If the maximum amount of records on the page has not been reached, we can end the loop
+		break;
+	}
+}
+if(full_data.size() == 0)
+{
+	return "<error><message>No records found.</message></error>";
+}
+//
+// Prepare the xml response
+data_xml = "<record>";
+row = 0;
+for each  record in full_data
+{
+	info "==========";
+	//info record;
+	// 	info record.get("relationships").get("contact").get("data").get("type");
+	// 	info record.get("relationships").get("contact").get("data").get("id");
+	//
+	// pull individual data points we need to display
+	yoda_id = record.get("id");
+	if(!record.get("relationships").get("salesNegotiation").isNull())
+	{
+		salesNegotiation_id = IFNULL(record.get("relationships").get("salesNegotiation").get("data").get("id"),"");
+		//info salesNegotiation_id;
+		salesNegotiation_id_url = salesNegotiation_id.removeFirstOccurence("/");
+		salesNegotiation_id_number = standalone.yoda_extract_id(salesNegotiation_id);
+		//info "salesNegotiation_id_number: " + salesNegotiation_id_number;
+	}
+	//remove first instance of / so we can use the id in our direct link section
+	yoda_id_url = yoda_id.removeFirstOccurence("/");
+	//extract just the number of from the id string so we can have it appears on the related list
+	yoda_id_number = standalone.yoda_extract_id(yoda_id);
+	info "yoda_id_number: " + yoda_id_number;
+	//
+	status = IFNULL(record.get("attributes").get("statusLabel"),"-");
+	sales_person_name = IFNULL(record.get("attributes").get("salesPersonName"),"-");
+	reference = IFNULL(record.get("attributes").get("reference").trim(),"-");
+	created = IFNULL(record.get("attributes").get("created").toDate().toString("dd/MM/yyyy"),"-");
+	contactName = IFNULL(record.get("attributes").get("contactName"),"-");
+	invoiceId = IFNULL(record.get("attributes").get("invoiceId"),"-");
+	sales_negotiation_number = IFNULL(record.get("attributes").get("salesNegotiationFormattedId"),"-");
+	if(!record.get("attributes").get("expectedMonthOfInvoice").isNull())
+	{
+		months = list();
+		months = {"January","February","March","April","May","June","July","August","September","October","November","December"};
+		month_num = record.get("attributes").get("expectedMonthOfInvoice").toNumber() - 1;
+		month_name = months.get(month_num);
+		info month_name;
+		expectedMonthOfInvoice = month_name;
+	}
+	else
+	{
+		expectedMonthOfInvoice = "-";
+	}
+	if(!record.get("attributes").get("invoiceDate").isNull())
+	{
+		invoiceDate = IFNULL(record.get("attributes").get("invoiceDate").toDate().toString("dd/MM/yyyy"),"-");
+	}
+	else
+	{
+		invoiceDate = "-";
+	}
+	if(!record.get("attributes").get("paymentDate").isNull())
+	{
+		paymentDate = IFNULL(record.get("attributes").get("paymentDate").toDate().toString("dd/MM/yyyy"),"-");
+	}
+	else
+	{
+		paymentDate = "-";
+	}
+	if(yoda_module == "sales-negotiations")
+	{
+		idString = IFNULL(record.get("attributes").get("idString"),"-");
+		currency_code = IFNULL(record.get("attributes").get("currencyCode"),"-");
+		if(currency_code == "EUR")
+		{
+			value = IFNULL(record.get("attributes").get("totals").get("EUR").get("netTotal").get("value"),"-");
+			if(value != "-")
+			{
+				result = value.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				value = "€" + result;
+			}
+			//info value;
+		}
+		else if(currency_code == "GBP")
+		{
+			value = IFNULL(record.get("attributes").get("totals").get("GBP").get("netTotal").get("value"),"-");
+			if(value != "-")
+			{
+				result = value.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				value = "£" + result;
+			}
+			//info value;
+		}
+		else if(currency_code == "USD")
+		{
+			value = IFNULL(record.get("attributes").get("totals").get("USD").get("netTotal").get("value"),"-");
+			if(value != "-")
+			{
+				result = value.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				value = "$" + result;
+			}
+			//info value;
+		}
+		value_GBP = IFNULL(record.get("attributes").get("totals").get("GBP").get("netTotal").get("value"),"-");
+		if(value_GBP != "-")
+		{
+			result = value_GBP.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+			value_GBP = "£" + result;
+		}
+	}
+	else if(yoda_module == "sales-orders")
+	{
+		idString = IFNULL(record.get("attributes").get("id"),"-");
+		// 		info "id:" + idString;
+		currency_code = IFNULL(record.get("attributes").get("sellCurrency"),"-");
+		if(currency_code == "EUR")
+		{
+			//info "currency_code:" + currency_code;
+			value = IFNULL(record.get("attributes").get("totals").get("EUR").get("sellTotal"),"-");
+			if(value != "-")
+			{
+				result = value.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				result = result.replaceAll(",","");
+				result = toDecimal(result) / 100;
+				result = result.toString("#,##0.00");
+				value = "€" + result;
+			}
+			gross = IFNULL(record.get("attributes").get("totals").get("EUR").get("adjustedSellTotalWithTax"),"-");
+			if(gross != "-")
+			{
+				result = gross.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				result = result.replaceAll(",","");
+				result = toDecimal(result) / 100;
+				result = result.toString("#,##0.00");
+				gross = "€" + result;
+			}
+			//info value;
+		}
+		else if(currency_code == "GBP")
+		{
+			value = IFNULL(record.get("attributes").get("totals").get("GBP").get("sellTotal"),"-");
+			if(value != "-")
+			{
+				result = value.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				result = result.replaceAll(",","");
+				result = toDecimal(result) / 100;
+				result = result.toString("#,##0.00");
+				value = "£" + result;
+			}
+			gross = IFNULL(record.get("attributes").get("totals").get("GBP").get("adjustedSellTotalWithTax"),"-");
+			if(gross != "-")
+			{
+				result = gross.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				result = result.replaceAll(",","");
+				result = toDecimal(result) / 100;
+				result = result.toString("#,##0.00");
+				gross = "£" + result;
+			}
+			//info value;
+		}
+		else if(currency_code == "USD")
+		{
+			//info "currency_code:" + currency_code;
+			//info "value:" + value;
+			//info record.get("attributes").get("totals");
+			value = IFNULL(record.get("attributes").get("totals").get("sale").get("sellTotal"),"-");
+			if(value != "-")
+			{
+				result = value.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				result = result.replaceAll(",","");
+				result = toDecimal(result) / 100;
+				result = result.toString("#,##0.00");
+				value = "$" + result;
+			}
+			gross = IFNULL(record.get("attributes").get("totals").get("sale").get("adjustedSellTotalWithTax"),"-");
+			if(gross != "-")
+			{
+				result = gross.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+				result = result.replaceAll(",","");
+				result = toDecimal(result) / 100;
+				result = result.toString("#,##0.00");
+				gross = "$" + result;
+			}
+			//info value;
+		}
+		value_GBP = IFNULL(record.get("attributes").get("totals").get("GBP").get("sellTotal"),"-");
+		if(value_GBP != "-")
+		{
+			result = value_GBP.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+			result = result.replaceAll(",","");
+			result = toDecimal(result) / 100;
+			result = result.toString("#,##0.00");
+			value_GBP = "£" + result;
+		}
+		adjustedSellTotalWithTax_GBP = IFNULL(record.get("attributes").get("totals").get("GBP").get("adjustedSellTotalWithTax"),"-");
+		if(adjustedSellTotalWithTax_GBP != "-")
+		{
+			result = adjustedSellTotalWithTax_GBP.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+			result = result.replaceAll(",","");
+			result = toDecimal(result) / 100;
+			result = result.toString("#,##0.00");
+			adjustedSellTotalWithTax_GBP = "£" + result;
+		}
+	}
+	//reference = IFNULL(record.get("attributes").get("reference"),"MISSING");
+	//
+	//info "status: " + status;
+	//info "sales_person_name: " + sales_person_name;
+	//
+	// prepare the link to yoda attribute
+	order_id = yoda_id;
+	link_properties = "";
+	if(yoda_id_number.isNull() == false)
+	{
+		url = "https://yoda.beautynet.co/sales-orders/" + yoda_id_number;
+		info "URL:  " + url;
+		link_properties = " link='true' url=\"" + url + "\"";
+	}
+	//
+	// add data to xml
+	data_xml = data_xml + "<row no='" + row + "'>";
+	if(yoda_id_number == "-")
+	{
+		data_xml = data_xml + "<FL val='Order Number' ><![CDATA[" + yoda_id_number + "]]></FL>";
+	}
+	else
+	{
+		data_xml = data_xml + "<FL val='Order Number' " + link_properties + "><![CDATA[" + yoda_id_number + "]]></FL>";
+	}
+	link_properties = "";
+	if(invoiceId.isNull() == false)
+	{
+		url = "https://yoda.beautynet.co/invoice/" + invoiceId + "/print";
+		info "URL:  " + url;
+		link_properties = " link='true' url=\"" + url + "\"";
+	}
+	if(invoiceId == "-")
+	{
+		data_xml = data_xml + "<FL val='Invoice Number'><![CDATA[" + invoiceId + "]]></FL>";
+	}
+	else
+	{
+		data_xml = data_xml + "<FL val='Invoice Number'" + link_properties + "><![CDATA[" + invoiceId + "]]></FL>";
+	}
+	if(reference.contains("&"))
+	{
+		reference = reference.replaceAll("&","");
+	}
+	data_xml = data_xml + "<FL val='Reference'>" + reference + "</FL>";
+	if(yoda_module == "sales-negotiations")
+	{
+		data_xml = data_xml + "<FL val='ID (negotiation #)'>" + idString + "</FL>";
+	}
+	else
+	{
+		//data_xml = data_xml + "<FL val='SO #'>" + idString + "</FL>";
+	}
+	data_xml = data_xml + "<FL val='Status'>" + status + "</FL>";
+	data_xml = data_xml + "<FL val='Month'>" + expectedMonthOfInvoice + "</FL>";
+	if(yoda_module == "sales-orders")
+	{
+		data_xml = data_xml + "<FL val='Sales Person'>" + sales_person_name + "</FL>";
+		data_xml = data_xml + "<FL val='Customer Contact'>" + contactName + "</FL>";
+	}
+	else
+	{
+		customer_id = record.get("relationships").get("contact").get("data").get("id").getSuffix("contacts/");
+		// 		info customer_id;
+		fetch_customer = standalone.yoda_fetch_record("Contacts","id=" + customer_id);
+		customer_name = fetch_customer.get("data").getJSON("attributes").get("fullName");
+		data_xml = data_xml + "<FL val='Sales Person'>" + sales_person_name + "</FL>";
+		data_xml = data_xml + "<FL val='Customer Contact'>" + customer_name + "</FL>";
+	}
+	data_xml = data_xml + "<FL val='Net Total (Sale)'>" + value + "</FL>";
+	data_xml = data_xml + "<FL val='Net Total (GBP)'>" + value_GBP + "</FL>";
+	data_xml = data_xml + "<FL val='Gross Total (Sale)'>" + gross + "</FL>";
+	data_xml = data_xml + "<FL val='Gross Total (GBP)'>" + adjustedSellTotalWithTax_GBP + "</FL>";
+	//data_xml = data_xml + "<FL val='Reference'>" + reference + "</FL>";
+	link_properties = "";
+	if(sales_negotiation_number.isNull() == false)
+	{
+		url = "https://yoda.beautynet.co/sales-negotiations/" + salesNegotiation_id_number;
+		info "URL:  " + url;
+		link_properties = " link='true' url=\"" + url + "\"";
+	}
+	if(sales_negotiation_number == "-")
+	{
+		data_xml = data_xml + "<FL val='Sales Negotiation' ><![CDATA[" + sales_negotiation_number + "]]></FL>";
+	}
+	else
+	{
+		data_xml = data_xml + "<FL val='Sales Negotiation' " + link_properties + "><![CDATA[" + sales_negotiation_number + "]]></FL>";
+	}
+	data_xml = data_xml + "<FL val='Created On'>" + created + "</FL>";
+	data_xml = data_xml + "<FL val='Invoice Date'>" + invoiceDate + "</FL>";
+	data_xml = data_xml + "<FL val='Payment Date'>" + paymentDate + "</FL>";
+	//invoiceDate
+	data_xml = data_xml + "</row>";
+	//
+	row = row + 1;
+}
+data_xml = data_xml + "</record>";
+if(data_xml.isNull())
+{
+	return "";
+}
+info data_xml;
+//
+// return the xml list
+// return data_xml;
+// data_xml = standalone.build_related_list("Accounts",record_id,"sales-orders");
+// return the xml list
+return data_xml;

@@ -1,0 +1,34 @@
+// Original author - Jake Holland
+// Contributing developers:
+// -
+//
+user_record = zoho.crm.getRecordById("users", user_id);
+user_record = user_record.get("users").get(0);
+info user_record;
+//
+full_name = user_record.get("full_name");
+last_name = user_record.get("last_name");
+user_id = "MISSING";
+//encode incase it has some space in it
+last_name =  encodeUrl(last_name);
+//
+// Set critera for fetch
+critera = "surname="+last_name;
+module = "users";
+//
+response = standalone.yoda_fetch_record(module,critera);
+response = response.get("data");
+for each record in response
+{
+	//info record;
+	yoda_fullName = record.get("attributes").get("fullName");
+// 	info yoda_fullName;
+// 	info full_name;
+	if(yoda_fullName == full_name)
+	{
+		user_id = record.get("id");
+	}
+}
+info "Yoda User ID: "+ user_id;
+//
+return user_id;

@@ -1,0 +1,13 @@
+account_info = zoho.crm.getRecordById("Accounts",account_id);
+//
+account_info = standalone.process_account_before_conversion(account_info);
+//
+//
+settings = standalone.yoda_get_intergration_settings();
+yoda_path = settings.get("credentials").get("root");
+//
+yoda_id = account_info.get("Yoda_Id");
+if(yoda_id != null)
+{
+	trigger = standalone.yoda_sync_record("Accounts",account_info);
+}

@@ -1,0 +1,55 @@
+// Original author - Jake Holland
+// Contributing developers:
+// - Sam Prabhu
+//
+// @input.map of the address
+address = address.toMap();
+//
+// get the record details
+// pull details from the account to map to address
+street = address.get("street");
+street_2 = address.get("street2");
+city = address.get("city");
+province = address.get("province");
+postal_code = address.get("postal_code");
+country = address.get("country");
+type = address.get("type");
+account_id = address.get("account_id");
+address_name = address.get("Name");
+primary = IFNULL(address.get("Primary"),FALSE);
+do_not_sync = address.get("Do_Not_Allow_Record_to_Sync");
+//
+// prepare new address
+Address = Map();
+Address.put("Type","Billing");
+Address.put("Street_1",street);
+Address.put("Account_Name",account_id);
+Address.put("Address_Line_Two",street_2);
+Address.put("Town_City",city);
+//Address.put("Province",province);
+Address.put("Postcode",postal_code);
+Address.put("Country",country);
+Address.put("Type",type);
+Address.put("Name",address_name);
+Address.put("Primary",primary);
+Address.put("Do_Not_Allow_Record_to_Sync", do_not_sync)
+//
+info Address;
+// attempt to add a new address
+response = zoho.crm.createRecord("Addresses",Address,{"trigger":{"workflow"}});
+info response;
+if(response.containsKey("id"))
+{
+	address_id = response.get("id");
+}
+//
+// check if address was added
+if(address_id == null)
+{
+	// cant add occupancy without address
+	return "Unable to create Address";
+}
+else
+{
+	return address_id;
+}

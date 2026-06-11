@@ -1,0 +1,43 @@
+// Original author - Jake Holland
+//
+// @input.value - The value to check.
+//
+// @desc A basic type check function to see if a value can be translated into a valid array from JSON.
+//
+// @depends none
+// @returns boolean - True or false depending on the result of the type check.
+//
+// WARNING: As this function can only return a string in CRM
+// the return value will have to be checked after converting
+// to a boolean like this:
+// standalone.is_array(value) == "true"
+//
+// set as a value of a map and then strip the surrounding map from the value
+// NOTE: This normalises actual deluge list varialbes into JSON notation.
+// Calling toString on a list in deluge wont surround the list with a square
+// brackets as we would expect in a JSON array.
+map_value = {"value":value};
+map_value = map_value.toString();
+translated_value = map_value.subString(9);
+translated_value = translated_value.subString(0,translated_value.length() - 1);
+//
+// check if array is potentially stringified
+first_character = IF(translated_value.length() > 0,translated_value.subString(0,1),null);
+if(first_character == "\"")
+{
+	translated_value = translated_value.removeFirstOccurence("\"");
+	translated_value = translated_value.removeLastOccurence("\"");
+}
+//
+// check surrounding characters
+// NOTE: When the first and last character are a bracket we will treat it as a valid
+// array value because it should be possible to parse as a JSON array.
+first_character = IF(translated_value.length() > 0,translated_value.subString(0,1),null);
+last_character = IF(translated_value.length() > 0,translated_value.subString(translated_value.length() - 1),null);
+if(first_character == "[" && last_character == "]")
+{
+	return true;
+}
+//
+// must not be an array
+return false;

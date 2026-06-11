@@ -1,0 +1,245 @@
+// Original author - Dash Bunyan
+// Contributing developers:
+// - Jake Holland
+// - Prince Rajput
+// - Owen Kempton
+// @input.record_id - The ID of the Opportunity the orders are attached to.
+//
+//
+module = "Accounts";
+yoda_module = "purchase-orders";
+//
+// call function that will build our related list 
+// data_xml = "<record><row no='0'><FL val='ID (negotiation #)'>SO0001887</FL><FL val='Status'>70</FL><FL val='Assigned To'>Andrew Horsfield</FL><FL val='Customer'>Lynne Morrison</FL><FL val='Value'>4395135</FL><FL val='Value (GBP)'>4395135</FL><FL val='Reference'>Fragrance / August / PO 221214</FL><FL val='Created On'>2022-06-08T09:43:37+00:00</FL></row></record>";
+// // Original author - Dash Bunyan
+// // Contributing developers:
+// // - Jake Holland
+// // - Prince Rajput
+// // @input.module - module the related list is on in CRM.
+// // @input.record_id - The ID of the Opportunity the orders are attached to.
+// // @input.yoda_module - yoda name of module we are fetching data from
+// //
+// set defaults
+OPEN_ERROR = "<error><message>";
+CLOSE_ERROR = "</message></error>";
+NO_CONTENT = "No items found";
+NO_FOLDER = "No folder found";
+//
+//negotiation
+//
+// TESTING
+// 529 <like 27
+// 105 <-- 1
+//
+// get the Contact from CRM
+record_info = zoho.crm.getRecordById(module,record_id);
+if(record_info.isNull())
+{
+	error = "Failed Sales Order - Failed to fetch Contact ID - " + record_id;
+	create_log = standalone.create_log("ERROR",error,record_info,"");
+	return "";
+}
+//
+yoda_id = record_info.get("Yoda_Id");
+if(yoda_id == null)
+{
+	return "";
+}
+// ____________________________________
+// Loop to grab multiple pages from API
+full_data = List();
+// Grab list from range function
+range = standalone.range(500).toList();
+for each index i in range
+{
+	// Loop to make multiple API calls
+	page_number = i + 1;
+	// Use the loop to get the page number
+	page_size = 100;
+	// Maximum page_size suggested by beauty net is 100
+	//Initialize page number
+	// // make the function to fetch the details from
+	critera = "contact.company=" + yoda_id + "&itemsPerPage=" + page_size + "&page=" + page_number + "&order[created]=desc";
+	try 
+	{
+		response = standalone.yoda_fetch_record(yoda_module,critera);
+		response = response.toMap();
+		// check for an error response
+		if(response.isNull())
+		{
+			error = "Failed " + yoda_module + " - Null Return from Yoda - " + record_id;
+			info error;
+			create_log = standalone.create_log("ERROR",error,response,"");
+			return "";
+		}
+	}
+	catch (error)
+	{
+		//Handle error for poor response from API.
+		info "Failed " + yoda_module + " - Null Return from Yoda - " + record_id + ". " + error;
+		create_log = standalone.create_log("ERROR","Failed " + yoda_module + " - Null Return from Yoda - " + record_id + ". " + error,response,"");
+		return "";
+	}
+	// Get data from response
+	data = response.get("data");
+	//
+	data_size = data.size();
+	info "Records Found: " + data_size;
+	// info data;
+	if(data_size == 0)
+	{
+		return "<error><message>No records found.</message></error>";
+	}
+	//Combne this new data with last download
+	full_data.addAll(data);
+	if(data_size < page_size)
+	{
+		//If the maximum amount of records on the page has not been reached, we can end the loop
+		break;
+	}
+}
+//
+// prepare the xml response
+data_xml = "<record>";
+row = 0;
+for each  record in full_data
+{
+	info "==========";
+	info record;
+	// 	info record.get("relationships").get("contact").get("data").get("type");
+	// 	info record.get("relationships").get("contact").get("data").get("id");
+	//
+	// pull individual data points we need to display
+	yoda_id = record.get("id");
+	info "yoda_id:" + yoda_id;
+	//remove first instance of / so we can use the id in our direct link section
+	yoda_id_url = yoda_id.removeFirstOccurence("/");
+	//extract just the number of from the id string so we can have it appears on the related list
+	yoda_id_number = standalone.yoda_extract_id(yoda_id);
+	//
+	status = IFNULL(record.get("attributes").get("statusLabel"),"-");
+	// 	sales_person_name = IFNULL(record.get("attributes").get("salesPersonName"),"MISSING");
+	reference = IFNULL(record.get("attributes").get("reference").trim(),"-");
+	created = IFNULL(record.get("attributes").get("created").getPrefix("T").toString("dd/MM/yyyy"),"-");
+	contactName = IFNULL(record.get("attributes").get("contactName"),"-");
+	purchase_number = IFNULL(record.get("attributes").get("id"),"-");
+	buyer_name = IFNULL(record.get("attributes").get("purchaserName"),"-");
+	expectedMonthOfReceipt = IFNULL(record.get("attributes").get("expectedMonthOfReceipt"),"-");
+	currency_code = IFNULL(record.get("attributes").get("currencyCode"),"-");
+	statusLabel = IFNULL(record.get("attributes").get("statusLabel"),"-");
+	invoiceNumber = IFNULL(record.get("attributes").get("invoiceNumber"),"-");
+	publishedStatus = IFNULL(record.get("attributes").get("publishedStatus"),"-");
+	invoice_date = IFNULL(record.get("attributes").get("invoiceDate"),"-");
+	info expectedMonthOfReceipt;
+	//
+	//format/process results from yoda
+	if(invoice_date != "-")
+	{
+		invoice_date = invoice_date.getPrefix("T").toString("dd/MM/yyyy");
+	}
+	//
+	month_map = {"1":"January","2":"February","3":"March","4":"April","5":"May","6":"June","7":"July","8":"August","9":"September","10":"October","11":"November","12":"December"};
+	currency_symble = {"GBP":"£","EUR":"€","USD":"$"};
+	//
+	if(expectedMonthOfReceipt != "-")
+	{
+		expectedMonthOfReceipt = month_map.getJSON(expectedMonthOfReceipt);
+	}
+	info expectedMonthOfReceipt;
+	net_total = IFNULL(record.get("attributes").get("totals").get("purchase").get("totalWithoutTax"),"-");
+	if(net_total != "-")
+	{
+		result = net_total.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+		result = result.replaceAll(",","");
+		result = toDecimal(result) / 100;
+		result = result.toString("#,##0.00");
+		currency_symble_fetch = currency_symble.get(currency_code);
+		net_total = currency_symble_fetch + result;
+	}
+	gross_total = IFNULL(record.get("attributes").get("totals").get("purchase").get("totalWithTax"),"-");
+	if(gross_total != "-")
+	{
+		result = gross_total.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+		result = result.replaceAll(",","");
+		result = toDecimal(result) / 100;
+		result = result.toString("#,##0.00");
+		currency_symble_fetch = currency_symble.get(currency_code);
+		gross_total = currency_symble_fetch + result;
+	}
+	net_total_gbp = IFNULL(record.get("attributes").get("totals").get("GBP").get("totalWithoutTax"),"-");
+	if(net_total_gbp != "-")
+	{
+		result = net_total_gbp.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+		result = result.replaceAll(",","");
+		result = toDecimal(result) / 100;
+		result = result.toString("#,##0.00");
+		net_total_gbp = "£" + result;
+	}
+	gross_total_gbp = IFNULL(record.get("attributes").get("totals").get("GBP").get("totalWithTax"),"-");
+	if(gross_total_gbp != "-")
+	{
+		result = gross_total_gbp.round(2).remove("-").toString().replaceAll("(?<!\.\d)(?<=\d)(?=(?:\d\d\d)+\b)",",");
+		result = result.replaceAll(",","");
+		result = toDecimal(result) / 100;
+		result = result.toString("#,##0.00");
+		gross_total_gbp = "£" + result;
+	}
+	//reference = IFNULL(record.get("attributes").get("reference"),"MISSING");
+	//
+	//info "status: " + status;
+	//info "sales_person_name: " + sales_person_name;
+	//
+	// prepare the link to yoda attribute
+	order_id = yoda_id;
+	link_properties = "";
+	if(order_id.isNull() == false)
+	{
+		url = "https://yoda.beautynet.co/purchase-orders/" + yoda_id_number;
+		info "url: " + url;
+		link_properties = " link='true' url=\"" + url + "\"";
+	}
+	//
+	// add data to xml
+	data_xml = data_xml + "<row no='" + row + "'>";
+	if(purchase_number == "-")
+	{
+		data_xml = data_xml + "<FL val='Order Number'><![CDATA[" + purchase_number + "]]></FL>";
+	}
+	else
+	{
+		data_xml = data_xml + "<FL val='Order Number' " + link_properties + "><![CDATA[" + purchase_number + "]]></FL>";
+	}
+	data_xml = data_xml + "<FL val='Invoice Number'>" + invoiceNumber + "</FL>";
+	if(reference.contains("&"))
+	{
+		reference = reference.replaceAll("&","");
+	}
+	data_xml = data_xml + "<FL val='Reference'>" + reference + "</FL>";
+	data_xml = data_xml + "<FL val='Status'>" + status + "</FL>";
+	data_xml = data_xml + "<FL val='Month'>" + expectedMonthOfReceipt + "</FL>";
+	data_xml = data_xml + "<FL val='Published Status'>" + publishedStatus + "</FL>";
+	data_xml = data_xml + "<FL val='Purchase Person'>" + buyer_name + "</FL>";
+	data_xml = data_xml + "<FL val='Supplier Contact'>" + contactName + "</FL>";
+	data_xml = data_xml + "<FL val='Net Total (Purchase)'>" + net_total + "</FL>";
+	data_xml = data_xml + "<FL val='Gross Total (Purchase)'>" + gross_total + "</FL>";
+	data_xml = data_xml + "<FL val='Net Total (GBP)'>" + net_total_gbp + "</FL>";
+	data_xml = data_xml + "<FL val='Gross Total (GBP)'>" + gross_total_gbp + "</FL>";
+	//data_xml = data_xml + "<FL val='Status Label'>" + statusLabel + "</FL>";
+	// 	data_xml = data_xml + "<FL val='Reference'>" + reference + "</FL>";
+	data_xml = data_xml + "<FL val='Created On'>" + created + "</FL>";
+	data_xml = data_xml + "<FL val='Invoice Date'>" + invoice_date + "</FL>";
+	data_xml = data_xml + "</row>";
+	//
+	row = row + 1;
+}
+data_xml = data_xml + "</record>";
+if(data_xml.isNull())
+{
+	return "";
+}
+// info data_xml;
+//
+// return the xml list
+// return data_xml;
+// return the xml list
+return data_xml;

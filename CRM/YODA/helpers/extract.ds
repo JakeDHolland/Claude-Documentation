@@ -1,0 +1,47 @@
+// Original author - Jake Holland
+// Contributing developers:
+// -
+//
+// @input string path - The location to pull the value from.
+// @input string data - The object to fetch.
+//
+// @desc Allows you to fetch data along a path
+// that is nested within a complex object.
+// Includes array indexes such as:
+// path/to/value/[0]/first_item_prop
+//
+// @depends none
+// @returns string - The data found at the path or null.
+//
+// default the result data if no path is given
+result = data;
+//
+// evaluate the path
+// NOTE: This will be something like: "a/path/to/the/data/[1]"
+// Where square brackets are used to access a static index within and array.
+if(path != null && path != "")
+{
+	// split path into keys
+	accessors = path.toList("/");
+	for each  accessor in accessors
+	{
+		// check for index
+		if(accessor.startsWith("["))
+		{
+			// get the index
+			index = accessor.getAlphaNumeric().removeAllAlpha().toLong();
+			// convert to list and check size before fetching data
+			items = IFNULL(result,List()).toList();
+			result = IF(items.size() > index,items.get(index),null);
+		}
+		else
+		{
+			// map as a regular object key
+			item = IFNULL(result,Map()).toString().toMap();
+			result = item.get(accessor);
+		}
+	}
+}
+//
+// return the resulting data
+return result;

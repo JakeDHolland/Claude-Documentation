@@ -1,0 +1,55 @@
+account_info = zoho.crm.getRecordById("Accounts",account_id);
+// Company Information == Mailing Information
+// The Company Information / Mailing Address should captured in CRM but not pushed to Yoda.
+if(account_info.get("Billing_Street") != null || account_info.get("Billing_Street_2") != null || account_info.get("Billing_City") != null || account_info.get("Billing_State") != null || account_info.get("Billing_Code") != null || account_info.get("Billing_Country") != null)
+{
+	company_address_map = Map();
+	company_address_map.put("street",account_info.get("Billing_Street"));
+	company_address_map.put("street2",account_info.get("Billing_Street_2"));
+	company_address_map.put("city",account_info.get("Billing_City"));
+	company_address_map.put("province",account_info.get("Billing_State"));
+	company_address_map.put("postal_code",account_info.get("Billing_Code"));
+	company_address_map.put("country",account_info.get("Country"));
+	company_address_map.put("type","Delivery");
+	company_address_map.put("account_id",account_id);
+	company_address_map.put("Name",account_info.get("Account_Name"));
+	company_address_map.put("Do_Not_Allow_Record_to_Sync","Yes");
+	// create address
+	address_id = standalone.yoda_create_address_record(company_address_map);
+	//
+}
+//Warehouse Address == Delivery Address
+if(account_info.get("Warehouse_Street_Address") != null || account_info.get("Warehouse_Address_line_2") != null || account_info.get("Warehouse_City") != null || account_info.get("Warehouse_State") != null || account_info.get("Warehouse_Postal_Zip_Code") != null || account_info.get("Warehouse_Country") != null)
+{
+	warehouse_address_map = Map();
+	warehouse_address_map.put("street",account_info.get("Warehouse_Street_Address"));
+	warehouse_address_map.put("street2",account_info.get("Warehouse_Address_line_2"));
+	warehouse_address_map.put("city",account_info.get("Warehouse_City"));
+	warehouse_address_map.put("province",account_info.get("Warehouse_State"));
+	warehouse_address_map.put("postal_code",account_info.get("Warehouse_Postal_Zip_Code"));
+	warehouse_address_map.put("country",account_info.get("Warehouse_Country"));
+	warehouse_address_map.put("type","Delivery");
+	warehouse_address_map.put("account_id",account_id);
+	warehouse_address_map.put("Primary",true);
+	warehouse_address_map.put("Name",account_info.get("Account_Name"));
+	// create address
+	info warehouse_address_map;
+	warehouse_address_id = standalone.yoda_create_address_record(warehouse_address_map);
+}
+//Invoice Address == Billing Address
+if(account_info.get("Street_Address") != null || account_info.get("Address_Line_2") != null || account_info.get("Invoice_City") != null || account_info.get("Invoice_State") != null || account_info.get("Postal_Zip_Code") != null || account_info.get("Invoice_Country") != null)
+{
+	invoice_address_map = Map();
+	invoice_address_map.put("street",account_info.get("Street_Address"));
+	invoice_address_map.put("street2",account_info.get("Address_Line_2"));
+	invoice_address_map.put("city",account_info.get("Invoice_City"));
+	invoice_address_map.put("province",account_info.get("Invoice_State"));
+	invoice_address_map.put("postal_code",account_info.get("Postal_Zip_Code"));
+	invoice_address_map.put("country",account_info.get("Invoice_Country"));
+	invoice_address_map.put("type","Billing");
+	invoice_address_map.put("Primary",true);
+	invoice_address_map.put("account_id",account_id);
+	invoice_address_map.put("Name",account_info.get("Account_Name"));
+	// create address
+	invoice_address_map = standalone.yoda_create_address_record(invoice_address_map);
+}

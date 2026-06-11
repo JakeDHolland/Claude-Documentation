@@ -1,0 +1,129 @@
+// Original author - Jake Holland
+// Contributing developers:
+// -
+//
+// @input.path - none generic critera e.g. companyName=Google
+// @input.method - type of api request POST, PUT, GET, etc
+// @input.body - API Body
+// @input.header - API Header
+//
+// NOTE: This is setup in respect the the Yoda API
+// System generated API documentation can be found here:
+// https://apidocs.beautyneteurope.com/#making-a-request
+// login details to document can be accessed in Vault under "3973 - Beautynet API link""
+//
+// body = body.toMap();
+// headers = headers.toMap();
+// body = Map();
+// headers = Map();
+//
+settings = standalone.yoda_get_intergration_settings();
+//info "settings:" + settings;
+credentials = settings.get("credentials");
+//info "credentials: " + credentials;
+//
+// create token url
+sync_status = credentials.get("sync_version");
+yoda_enviroment = credentials.get(sync_status);
+yoda_protocol = credentials.get("protocol");
+yoda_domain = credentials.get("domain");
+yoda_root = credentials.get("root");
+//
+//info yoda_protocol + " - " + yoda_enviroment + " - " + yoda_domain;
+url = yoda_protocol + yoda_enviroment + yoda_domain;
+//
+// only when getting the access token do we not need to add the root.
+if(path == "token")
+{
+	url = url + path;
+}
+else
+{
+	url = (url + yoda_root) + path;
+}
+// //
+info "==Calll API=====";
+info "method:" + method;
+info "url: " + url;
+info "method: " + method;
+info "body: " + body;
+info "headers: " + headers;
+// Make API Call
+// we put the different types in a if since invoke url does not allow a variable for the type
+// IF condition on if this needs to use the live or sandbox API
+if(sync_status == "live_enviroment")
+{
+	if(method == "POST")
+	{
+		response = invokeurl
+		[
+			url :url
+			type :POST
+			parameters:body.toString()
+			connection:"yoda_live"
+		];
+	}
+	else if(method == "GET")
+	{
+		//info "GET INVOKE";
+		response = invokeurl
+		[
+			url :url
+			type :GET
+			parameters:body
+			connection:"yoda_live"
+		];
+	}
+	else if(method == "PUT")
+	{
+		// 	info "PUT INVOKE";
+		response = invokeurl
+		[
+			url :url
+			type :PUT
+			parameters:body.toString()
+			connection:"yoda_live"
+		];
+	}
+}
+else
+{
+	if(method == "POST")
+	{
+		response = invokeurl
+		[
+			url :url
+			type :POST
+			parameters:body.toString()
+			connection:"yodatest"
+		];
+	}
+	else if(method == "GET")
+	{
+		//info "GET INVOKE";
+		response = invokeurl
+		[
+			url :url
+			type :GET
+			parameters:body
+			connection:"yodatest"
+		];
+	}
+	else if(method == "PUT")
+	{
+		// 	info "PUT INVOKE";
+		response = invokeurl
+		[
+			url :url
+			type :PUT
+			parameters:body.toString()
+			connection:"yodatest"
+		];
+	}
+}
+
+// info response;
+info "========";
+//
+//
+return response;

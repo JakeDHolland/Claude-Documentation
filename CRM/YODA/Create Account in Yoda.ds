@@ -1,0 +1,18 @@
+// Original author - Jake Holland
+// Contributing developers:
+// - Prince Rajput
+//
+// @input.account_id - The account record ID to generate and address for.
+//
+// get the account record
+record_info = zoho.crm.getRecordById("Accounts",account_id);
+settings = standalone.yoda_get_intergration_settings();
+yoda_path = settings.get("credentials").get("root");
+//=========Create/Update Account ===========Working==========
+//It is the same function as create. We use tthe Yoda_id field on the record to identify if the record should be create or updated
+//
+// we don't just feed in the record_id since doing it outside the create_function allows us to inject any additional information into the mapping. 
+// e.g. we can inject the related account yoda id when syncing an account into the contact map so we dont need to search for it inside yoda_create_record allowing it to be more generic
+//
+trigger = standalone.yoda_sync_record("Accounts",record_info);
+info trigger;

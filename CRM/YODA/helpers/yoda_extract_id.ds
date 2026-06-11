@@ -1,0 +1,10 @@
+// Original author - Jake Holland
+// Contributing developers:
+//
+// @input.record_id - yoda id in yoda format
+//
+yoda_id_list = yoda_id_string.toList("/");
+yoda_id_list_size = yoda_id_list.size();
+yoda_id_list_location = yoda_id_list_size - 1;
+yoda_id = yoda_id_list.get(yoda_id_list_location);
+return yoda_id;

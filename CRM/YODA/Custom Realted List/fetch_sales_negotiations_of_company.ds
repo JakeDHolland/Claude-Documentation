@@ -1,0 +1,12 @@
+// Original author - Dash Bunyan
+// Contributing developers:
+// - Jake Holland
+// - Prince Rajput
+// @input.record_id - The ID of the Opportunity the orders are attached to.
+//
+//
+//
+// call function that will build our related list
+data_xml = standalone.build_related_list("Accounts",record_id,"sales-negotiations");
+// return the xml list
+return data_xml;

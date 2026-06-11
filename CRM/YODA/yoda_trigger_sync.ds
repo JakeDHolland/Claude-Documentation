@@ -1,0 +1,102 @@
+// Original author - Jake Holland
+// Contributing developers:
+// - Prince Rajput
+//
+// @input.account_id - The account record ID to generate and address for.
+//
+// get the account record
+// we don't just feed in the record_id since doing it outside the create_function allows us to inject any additional information into the mapping.
+// e.g. we can inject the related account yoda id when syncing an account into the contact map so we dont need to search for it inside yoda_create_record allowing it to be more generic
+record_info = zoho.crm.getRecordById("Accounts",account_id);
+//
+record_info = standalone.process_account_before_conversion(record_info);
+//
+// we start with a delay so the functions on Creation of an Contact and Address have time to come to the related Account and see the yoda id is empty.
+// this means they do not need to try and sync their record since this function is going to do it for us so we are sure we havbe everything we need.
+delay_url = "https://postman-echo.com/delay/5";
+delayResponseCall = invokeurl
+[
+	url :delay_url
+	type :GET
+];
+//
+// //=========Create_Account===========
+trigger = standalone.yoda_sync_record("Accounts",record_info);
+info trigger;
+//
+// if there was a faliure in the sync of the account end the function
+if(trigger != "Successfull")
+{
+	return "";
+}
+// //
+// //
+// // call again so we can fetch Account yoda_id and generate the link so we can inject it into the Contact mapping
+// // We can really avoid this if we have the system always return the yoda id if successful. Implement that in the future
+settings = standalone.yoda_get_intergration_settings();
+yoda_path = settings.get("credentials").get("root");
+account_info = zoho.crm.getRecordById("Accounts",account_id);
+yoda_id = account_info.get("Yoda_Id");
+company_link = "/" + yoda_path + "companies/" + yoda_id;
+// //=========Create_Contact===========
+//
+related_contacts = zoho.crm.searchRecords("Contacts","(Account_Name:equals:" + account_id + ")");
+contact_size = related_contacts.size();
+info contact_size;
+info related_contacts;
+//
+//If the Account was created and not linked to any contacts skip the contact create process
+if(contact_size != 0)
+{
+	//
+	// 99% there will only ever be one but if we do this we can have this function run in the future if they ever import in a records in the future
+	for each  contact in related_contacts
+	{
+		contact_id = contact.get("id");
+		yoda_id = contact.get("Yoda_Id");
+		info contact_id;
+		//
+		// If the field is already mapped for us we can skip the process
+		if(yoda_id == null)
+		{
+			//
+			// Inject related Account yoda link into contact mapping so It can be linked to account in Yoda
+			contact.put("company_yoda_id",company_link);
+			//
+			trigger = standalone.yoda_sync_record("Contacts",contact);
+			// info trigger;
+		}
+	}
+}
+//
+// // //=========Create_Address===========
+//
+related_addresses = zoho.crm.searchRecords("Addresses","(Account_Name:equals:" + account_id + ")");
+address_size = related_addresses.size();
+//
+if(address_size != 0)
+{
+	//
+	// 99% there will only ever be one if that but if we do this we can have this function run in the future if they ever import in a records in the future
+	// We also do this last since if this is a converted Lead the function to create the Address record should be done now
+	for each  address in related_addresses
+	{
+		address_id = address.get("id");
+		yoda_id = address.get("Yoda_Id");
+		do_not_sync = address.get("Do_Not_Allow_Record_to_Sync");
+		//
+		// If the field is already mapped for us we can skip the process
+		if(yoda_id == null && do_not_sync != "Yes")
+		{
+			//
+			address = standalone.process_address_before_conversion(address);
+			//
+			// Inject related Account yoda link into contact mapping so It can be linked to account in Yoda
+			address.put("company_yoda_id",company_link);
+			//
+			trigger = standalone.yoda_sync_record("Addresses",address);
+			// info trigger;
+		}
+	}
+}
+return "";

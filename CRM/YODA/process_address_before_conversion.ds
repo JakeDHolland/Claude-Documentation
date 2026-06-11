@@ -1,0 +1,17 @@
+address = address.toMap();
+//
+// Address create/update logic
+// we inject the address type since it is a 1 or 2 in yoda but in crm its a string. We do the logic here to keep the function generic
+address_type = address.get("Type");
+if(address_type == "Billing")
+{
+	address.put("address_type",3);
+}
+else
+{
+	address.put("address_type",2);
+}
+//
+//
+//
+return address;

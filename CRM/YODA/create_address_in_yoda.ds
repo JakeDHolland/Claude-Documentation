@@ -1,0 +1,41 @@
+// Original author - Jake Holland
+// Contributing developers:
+// - Prince Rajput
+//
+// @input.account_id - The account record ID to generate and address for.
+//
+// get the account record
+module = "Addresses";
+record_info = zoho.crm.getRecordById(module,record_id);
+//
+settings = standalone.yoda_get_intergration_settings();
+yoda_path = settings.get("credentials").get("root");
+// =========Create/Update Address ===========Working==========
+// Address create/update logic
+record_info = standalone.process_address_before_conversion(record_info);
+record_info = record_info.toMap();
+//
+// get the related account yoda id so we can link it
+account = record_info.get("Account_Name");
+if(account != null)
+{
+	account_id = account.get("id");
+	account_info = zoho.crm.getRecordById("Accounts",account_id);
+	yoda_id = account_info.get("Yoda_Id");
+	info "yoda_id: " + yoda_id;
+	//
+	// if null then we cant sync this record so dont try
+	if(yoda_id != null)
+	{
+		info "hit";
+		yoda_path = settings.get("credentials").get("root");
+		company_link = "/" + yoda_path + "companies/" + yoda_id;
+		info "company_link: " + company_link;
+		record_info.put("company_yoda_id", company_link);
+		//
+		info record_info;
+		//
+		trigger = standalone.yoda_sync_record(module,record_info);
+		info trigger;
+	}
+}

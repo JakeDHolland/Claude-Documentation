@@ -1,0 +1,11 @@
+// Original author - Prince Rajput
+// Contributing developers:
+//
+// @input.record_id - The account record ID to fetch the account record response.
+//
+// get the account record
+record_info = zoho.crm.getRecordById("Accounts",id);
+mp = Map();
+mp.put("Task_Trigger_Date",zoho.currentdate.addMonth(3));
+//updating the trigger date in Accounts module
+info zoho.crm.updateRecord("Accounts",id,mp,{"trigger":{"workflow"}});

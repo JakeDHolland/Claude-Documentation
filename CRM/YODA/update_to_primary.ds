@@ -1,0 +1,23 @@
+response = zoho.crm.getRecordById("Addresses",id);
+orginal_type = response.get("Type");
+// info response;
+related_addresses = zoho.crm.getRelatedRecords("Addresses","Accounts",response.get("Account_Name").get("id"));
+// info related_addresses;
+for each  rec in related_addresses
+{
+	if(rec.get("id") != id)
+	{
+		rec_type = rec.get("Type");
+		rec_primary = rec.get("Primary");
+		//
+		// if the current record in loop is the same type(delivery/billing) and is marked as primary address, set to false and update.
+		if(rec_primary == true && rec_type == orginal_type)
+		{
+			mp = Map();
+			mp.put("Primary",false);
+			info rec.get("id");
+			info zoho.crm.updateRecord("Addresses",rec.get("id"),mp);
+		}
+
+	}
+}

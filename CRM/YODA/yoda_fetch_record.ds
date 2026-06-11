@@ -1,0 +1,36 @@
+// Original author - Jake Holland
+// Contributing developers:
+//
+// @input.module - the yoda api name of the module e.g. contacts
+// @input.criters - the critera to search records e.g. fullName=Jake Holland
+//
+//
+//example will return the first 3 contacts on the first page
+//path = "contacts?itemsPerPage=3";
+//
+//example will return the contact with id of 3
+//critera = "/3";
+//
+// only return partial match for fullName and emailAddress. Will return things that are not even close to the value inputted so you will need to loop though.
+//critera = "fullName=Daniel Romanowski";
+//
+settings = standalone.yoda_get_intergration_settings();
+yoda_module = settings.get("path").get(module);
+//build path
+fetch_path = yoda_module + "?" + critera + "&order[created]=desc";
+//
+headers = Map();
+//
+body = Map();
+//
+//
+info "Path:" + fetch_path;
+info "headers:" + headers;
+response = standalone.yoda_call_api(fetch_path,"GET",body,headers);
+//
+//create log of response to store
+create_log = standalone.create_log("INFO","Fetch Critera: " + fetch_path,response,module);
+//
+contacts = response.get("data");
+//info "Contacts: "+ contacts.size();
+return response;

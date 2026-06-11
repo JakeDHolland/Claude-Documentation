@@ -1,0 +1,45 @@
+// Original author - Dash Bunyan
+// Contributing developers:
+// - Jake Holland
+//
+// @input.path - The location within the data object to add the value.
+// @input.data - The object to add the value to.
+// @input.value - The value to add at the location path.
+//
+// @desc Allows you to add data to the end of a path
+// within a complex object structure.
+//
+// @depends extract
+// @returns string - The modified JSON.
+//
+// make sure the input data is cleanly translated into a map
+data = IF(data == "" || data == null,Map(),data).toMap();
+//
+// split the path into accessors
+accessors = path.toList("/");
+//
+// build the result iterating back from the last accessor
+result = value;
+last_index = accessors.size() - 1;
+for each index i in accessors
+{
+	// get the current index and accessor
+	index = last_index - i;
+	head = accessors.get(index);
+	//
+	// build the remaining path
+	tail = accessors.subList(0,index).toString("/");
+	//
+	// extract data at path and build as map
+	extract = standalone.extract(tail,data);
+	container = IF(extract == "" || extract == null,Map(),extract).toMap();
+	//
+	// add the data at this layer
+	container.put(head,result);
+	//
+	// add to overall result
+	result = container;
+}
+//
+// return modified / generated data
+return result;

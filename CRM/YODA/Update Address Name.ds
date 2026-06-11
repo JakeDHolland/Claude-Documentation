@@ -1,0 +1,17 @@
+// Original author - Prince Rajput
+// Contributing developers:
+//
+// @input.record_id - The account record ID to fetch the account record response.
+//
+// get the account record
+module = "Addresses";
+record_info = zoho.crm.getRecordById(module,record_id);
+info record_info;
+address_name = ifnull(record_info.get("Street_1"),"");
+auto_number = ifNull(record_info.get("Auto_Number"),"");
+post_code = ifNull(record_info.get("Postcode"),"");
+mp = Map();
+//Updataing the Address with auto_number + address_name + post_code
+mp.put("Name",auto_number + " - " + address_name + " - " + post_code);
+updt_address = zoho.crm.updateRecord("Addresses",record_id,mp);
+info updt_address;
