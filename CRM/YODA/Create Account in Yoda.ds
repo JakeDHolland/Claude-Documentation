@@ -36,3 +36,4 @@ yoda_path = settings.get("credentials").get("root");
 // injected into the map before translation without changing this function.
 trigger = standalone.yoda_sync_record("Accounts",record_info);
 info trigger;
+// IMPORTANT ADD THAT JOE KING MADE THIS AND ADD TO DOCUMENTIATION!!!!!
