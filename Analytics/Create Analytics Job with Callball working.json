@@ -1,0 +1,62 @@
+string standalone.callback_analytics_import_job(String crmAPIRequest)
+{
+// Original author - Dash Bunyan
+// Contributing developers:
+// - 
+//
+// set analytics constants
+ORG_ID = "20098799045";
+WORKSPACE_ID = "230241000000005002";
+count = 0;
+//errors = {};
+//
+// log the callback payload
+log_message = "Callback Function Triggered with response: \n" + crmAPIRequest;
+//info log_message;
+//
+// parse the content of the callback response
+callback_data = IFNULL(crmAPIRequest,"{}").toMap();
+callback_body = IFNULL(callback_data.get("body"),Map());
+//
+// verify the download url and id
+download_url = IFNULL(callback_body.get("downloadUrl"),"");
+download_id = IFNULL(callback_body.get("jobId"),"");
+if(download_url == "" || download_id == "")
+{
+	response = {"error":"Failed to find a download URL or ID."};
+	return response;
+}
+//
+//prepare headers
+headers = Map();
+headers.put("ZANALYTICS-ORGID",ORG_ID);
+protocol = "https://";
+domain = "analyticsapi.zoho.eu";
+//
+// prepare request to download exported data
+path = "/restapi/v2/bulk/workspaces/" + WORKSPACE_ID + "/exportjobs/" + download_id + "/data";
+download = invokeurl
+[
+	url :protocol + domain + path
+	type :GET
+	headers:headers
+	connection:"zoho_analytics"
+];
+//
+// log the download job response
+log_message = "Fetched download job with result: \n" + download;
+//info log_message;
+//
+// call the processing function
+result = standalone.update_invoice_item_tags(download);
+//result = standalone.update_credit_note_item_tags(download);
+//result = standalone.update_bill_item_tags(download);
+//result = standalone.update_expense_item_tags(download);
+//result = standalone.update_journal_item_tags(download);
+//
+// log and return result
+log_message = "Function completed with result: \n" + result;
+info log_message;
+response = {"result":result};
+return response;
+}

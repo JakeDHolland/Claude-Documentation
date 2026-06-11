@@ -1,0 +1,54 @@
+string standalone.trigger_analytics_import_job()
+{
+// Original author - Dash Bunyan
+// Contributing developers:
+// - 
+//
+// set analytics constants
+ORG_ID = "20098799045";
+WORKSPACE_ID = "230241000000005002";
+VIEW_ID = "230241000001000093";
+// Invoice Item Reporting Tag Remapping	
+//VIEW_ID = "230241000001000392"; // Credit Note Item Reporting Tag Remapping	
+//VIEW_ID = "230241000001000712"; // Bill Item Reporting Tag Remapping	
+//VIEW_ID = "230241000001003002"; // Vendor Credit Item Reporting Tag Remapping	
+//VIEW_ID = "230241000001002031"; // Expense Item Reporting Tag Remapping
+//VIEW_ID = "230241000001003301"; // Journal Item Reporting Tag Remapping
+//  
+// prepare callback url
+url_key = "1003.7406ecbcc0ecb640334f527a281e7355.086156900f24b1629267c2fa4b5cae72";
+callback_url = "https://www.zohoapis.eu/crm/v2/functions/callback_analytics_import_job/actions/execute";
+callback_query = "?auth_type=apikey&zapikey=" + url_key;
+//
+// set select parameters for analytics request
+//select = {"*"};
+//
+// prepare headers
+headers = Map();
+headers.put("ZANALYTICS-ORGID",ORG_ID);
+//
+// prepare the query parameters
+config = Map();
+config.put("responseFormat","json");
+//config.put("selectedColumns",select);
+config.put("callbackUrl",callback_url + callback_query);
+query = "?CONFIG=" + zoho.encryption.urlEncode(config.toString());
+//
+// prepare request
+protocol = "https://";
+domain = "analyticsapi.zoho.eu";
+path = "/restapi/v2/bulk/workspaces/" + WORKSPACE_ID + "/views/" + VIEW_ID + "/data";
+//
+// make download request
+info protocol + domain + path + query;
+result = invokeurl
+[
+	url :protocol + domain + path + query
+	type :GET
+	headers:headers
+	connection:"zoho_analytics"
+];
+//
+// return the result of the download trigger
+return result;
+}
