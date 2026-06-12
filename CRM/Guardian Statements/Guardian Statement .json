@@ -1,0 +1,187 @@
+// Original author: Jake Holland
+// Contributing developers:
+// -
+//
+// Purpose:
+// This script downloads exported analytics data, maps each row to a Deal,
+// creates a Guardian Statement record, and then updates the new record
+// with a feedback URL.
+//
+// Configuration constants for Zoho Analytics integration.
+ORG_ID = "20000159273";
+WORKSPACE_ID = "382000000003001";
+count = 0;
+errors = {};
+// ------------------------------------------------------------
+// Step 1: Capture the callback payload sent into this function.
+// ------------------------------------------------------------
+log_message = "Callback Function Triggered with response: \n" + crmAPIRequest;
+//info "log_message: " + log_message;
+// //
+// Step 2: Parse the callback response and extract the job ID.
+callback_data = IFNULL(crmAPIRequest,"{}").toMap();
+callback_body = IFNULL(callback_data.get("body"),Map());
+
+// Verify that the export job ID is present before continuing.
+download_id = callback_body.get("jobId");
+//
+////////Hard code the job ID below to test and manually run 
+//  download_id = "382000042362117";
+if(download_id.isNull())
+{
+	response = {"error":"Failed to find a download URL or ID."};
+	return response;
+}
+//
+// Step 3: Prepare the authentication headers and API endpoint.
+headers = Map();
+headers.put("ZANALYTICS-ORGID",ORG_ID);
+protocol = "https://";
+domain = "analyticsapi.zoho.eu";
+//
+// Step 4: Request the analytics export data for the specified job ID.
+path = "/restapi/v2/bulk/workspaces/" + WORKSPACE_ID + "/exportjobs/" + download_id + "/data";
+download = invokeurl
+[
+	url :protocol + domain + path
+	type :GET
+	headers:headers
+	connection:"zoho_analytics"
+];
+info download;
+// Step 5: Check whether the download request returned a failure.
+status = download.get("status");
+if(!status.isNull())
+{
+	// record the failed fetch
+	log_message = "Failed to fetch download with ID " + download_id + ". Result: \n" + download;
+	response = {"error":log_message};
+	return response;
+}
+result_size = download.get("data").size();
+log_message = "Fetched download job with " + result_size + " results";
+//info download;
+// NOTE: Uncomment this during testing to inspect the raw export output.
+data = download.get("data");
+// info data;
+//
+today_date = today;
+month_number = today_date.month();
+month_number = month_number - 1;
+if(month_number == 0)
+{
+	month_number = 12;
+}
+month_map = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"};
+month = month_map.get(month_number);
+year = today.year();
+//
+info "TOTAL FOUND RECORDS: " + data.size();
+loop = true;
+for each  record in data
+{
+	payload = Map();
+	//
+	// get deal and account id 
+	// 	if(loop = true)
+	// 	{
+	info "=======";
+	//info record;
+	project_name = record.get("Project Name");
+	project_name_left = project_name.left(10);
+	info project_name;
+	// Optional hard-coded test filter can be enabled here during debugging.
+	// Example:
+	// if(project_name == "4531 - CLPS - Analytics Custom Reports")
+	// {
+	//
+	// Use the first 10 characters of the project name to locate the related Deal.
+	deals = zoho.crm.searchRecords("Deals","(Deal_Name:starts_with:" + project_name_left + ")");
+	//info "deals: " + deals;
+	deal_size = deals.size();
+	info "deal_size: " + deal_size;
+	if(deal_size != 0)
+	{
+		deal = deals.get(0);
+		deal_id = deal.get("id");
+		info deal_id;
+		account_id = deal.get("Account_Name").get("id");
+		contact_id = deal.get("Contact_Name").get("id");
+		info "Contact ID: " + contact_id;
+		contact_info = zoho.crm.getRecordById("Contacts",contact_id);
+		contact_email = contact_info.get("Email");
+		contact_first_name = contact_info.get("First_Name");
+		payload.put("Company",account_id);
+		payload.put("Opportunity",deal_id);
+		payload.put("Contact",contact_id);
+	}
+	else
+	{
+		info "NO FOUND DEALS";
+	}
+	//
+	renewal_date = record.get("Renewal Date");
+	contains_line = renewal_date.contains("-");
+	info "renewal_date: " + renewal_date;
+	if(contains_line == true)
+	{
+		//info "hit";
+		renewal_date = renewal_date.toDate("dd-MM-yyyy");
+	}
+	info "renewal_date: " + renewal_date;
+	//	
+	project_name = project_name + " - Monthly Snapshot - " + month + " - " + year;
+	info "Name: " + project_name;
+	payload.put("Months_Until_Renewal",record.get("Months Until Renewal"));
+	payload.put("Name",project_name);
+	payload.put("Renewal_date",renewal_date);
+	payload.put("Remaining_Hours",IFNULL(record.get("Hours Remaining"),record.get("Total Hours")));
+	payload.put("Time_Used",IFNULL(record.get("Time % Used"),0));
+	payload.put("Rate_per_Hour",record.get("Support Rate"));
+	payload.put("Statement_Status","Draft");
+	payload.put("Record_Type","Statement");
+	payload.put("Average_Monthly_Usage",IFNULL(record.get("Average Hours Used Per Month"),0));
+	payload.put("Suggested_Top_Up_Amount",record.get("Suggested Top Up Amount"));
+	payload.put("Current_Month",month);
+	//
+	// Step 7: Look up prior Guardian Statements for the same Deal to carry over
+	// relevant email and statement link details when available.
+	historic_statements = zoho.crm.getRelatedRecords("Monthly_Statements","Deals",deal_id);
+	info "historic_statements: " + historic_statements.size();
+	historic_statements_size = historic_statements.size();
+	if(historic_statements_size != 0)
+	{
+		// 	loops = historic_statements_size - 1;
+		// 	info loops;
+		loop_list = standalone.range(historic_statements_size);
+		last_statement_found = false;
+		for each  loop in loop_list
+		{
+			//info loop;
+			historic_record = historic_statements.get(loop);
+			if(historic_record.get("Record_Type") == "Guardian Statement" && last_statement_found == false)
+			{
+				//info "======";
+				//info historic_record;
+				last_statement_found = true;
+				historic_secondary_email = historic_record.get("Secondary_Email");
+				historic_statement_url = historic_record.get("Statement_URL");
+				historic_password = historic_record.get("Statement_Password");
+				//info historic_secondary_email;
+				payload.put("Secondary_Email",historic_secondary_email);
+				payload.put("Statement_URL",historic_statement_url);
+				payload.put("Statement_Password",historic_password);
+				//info payload;
+			}
+		}
+	}
+	//
+	info "Payload: " + payload;
+	create_record = zoho.crm.createRecord("Guardian_Statements",payload);
+	info create_record;
+	created_id = create_record.get("id");
+	update = zoho.crm.updateRecord("Guardian_Statements",created_id,{"Feedback_URL":"https://forms.zohopublic.eu/a2zcloud/form/GuardianMonthlyStatementFeedback/formperma/wyq5S-tLGG5G4T0VCmnkhb8eMy-Uj6FU4JYNSZfaaLg?name=" + project_name});
+	// 		loop = false;
+	// 	}
+}
+return "";
